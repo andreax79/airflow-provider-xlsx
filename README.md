@@ -1,2 +1,2 @@
 # airflow-xlsx-plugin
-Airflow operators for reading and writing XLSX files
+Airflow operators for converting XLSX files from/to Parquet/CSV
