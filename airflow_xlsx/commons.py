@@ -7,16 +7,6 @@ import datetime
 import unicodedata
 from enum import Enum
 
-HEADER_LOWER = 'lower'
-HEADER_UPPER = 'upper'
-HEADER_SKIP = 'skip'
-DEFAULT_FORMAT = 'parquet'
-DEFAULT_CSV_DELIMITER = ','
-DEFAULT_CSV_HEADER = HEADER_LOWER
-# https://support.microsoft.com/en-us/help/214326/excel-incorrectly-assumes-that-the-year-1900-is-a-leap-year
-XLS_EPOC = datetime.datetime(1899, 12, 30)
-XLSX_EPOC = datetime.datetime(1900, 1, 1)
-
 __all__ = [
     'rmdiacritics',
     'clean_key',
@@ -32,13 +22,28 @@ __all__ = [
     'VERSION',
 ]
 
+HEADER_LOWER = 'lower'
+HEADER_UPPER = 'upper'
+HEADER_SKIP = 'skip'
+#: Default output format
+DEFAULT_FORMAT = 'parquet'
+#: Default CSV delimiter
+DEFAULT_CSV_DELIMITER = ','
+#: Default CSV header case
+DEFAULT_CSV_HEADER = HEADER_LOWER
+#: XLS Epoc - see https://support.microsoft.com/en-us/help/214326/excel-incorrectly-assumes-that-the-year-1900-is-a-leap-year
+XLS_EPOC = datetime.datetime(1899, 12, 30)
+#: XLSX Epoc
+XLSX_EPOC = datetime.datetime(1900, 1, 1)
+
 VERSION_FILE = os.path.join(os.path.dirname(__file__), "VERSION")
 with open(VERSION_FILE) as f:
+    #: Plugin Version
     VERSION = f.read().strip()
 
 
 def rmdiacritics(char):
-    # Return the base character without diacritics (eg. accents)
+    " Return the base character without diacritics (eg. accents) "
     desc = unicodedata.name(char)
     cutoff = desc.find(' WITH ')
     if cutoff != -1:
@@ -59,6 +64,7 @@ def clean_key(k):
 
 
 class FileFormat(Enum):
+    " File format enumerator (parquet/csv) "
     parquet = 'parquet'
     csv = 'csv'
 

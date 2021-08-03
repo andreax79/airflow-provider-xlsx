@@ -44,16 +44,18 @@ class FromXLSXOperator(BaseOperator):
         **kwargs
     ):
         """
+        Convert an XLSX/XLS file into Parquet or CSV file
+
         :param source: source filename (xlsx or xls)
         :param target: target filename (csv or parquet)
         :param worksheet: worksheet title or number (zero-based)
         :param drop_columns: list of columns to be dropped
         :param add_columns: columns to be added (dict or list column=value)
-        :param types: force column type (dict or list column='str', 'd', 'datetime64[ns]')
-        :param columns_names: force column names (list)
-        :param file_format: file format ('parquet' or 'csv')
+        :param types: force columns types (dict or list column='str', 'd', 'datetime64[ns]')
+        :param columns_names: force columns names (list)
+        :param file_format: target file format ('parquet' or 'csv')
         :param csv_delimiter: CSV delimiter (defualt: ',')
-        :param csv_header: CSV header case ('lower', 'upper', 'skip')
+        :param csv_header: convert CSV header case ('lower', 'upper', 'skip')
         """
         super(FromXLSXOperator, self).__init__(*args, **kwargs)
         self.source = source
