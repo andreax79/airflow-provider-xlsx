@@ -10,6 +10,7 @@ from enum import Enum
 __all__ = [
     'rmdiacritics',
     'clean_key',
+    'get_type',
     'FileFormat',
     'HEADER_LOWER',
     'HEADER_UPPER',
@@ -17,6 +18,7 @@ __all__ = [
     'DEFAULT_FORMAT',
     'DEFAULT_CSV_DELIMITER',
     'DEFAULT_CSV_HEADER',
+    'DEFAULT_TABLE_NAME',
     'XLS_EPOC',
     'XLSX_EPOC',
     'VERSION',
@@ -35,6 +37,9 @@ DEFAULT_CSV_HEADER = HEADER_LOWER
 XLS_EPOC = datetime.datetime(1899, 12, 30)
 #: XLSX Epoc
 XLSX_EPOC = datetime.datetime(1900, 1, 1)
+#: Default Query Operator table name
+DEFAULT_TABLE_NAME = 'xls'
+
 
 VERSION_FILE = os.path.join(os.path.dirname(__file__), "VERSION")
 with open(VERSION_FILE) as f:
@@ -61,6 +66,17 @@ def clean_key(k):
     k = ''.join([rmdiacritics(x) for x in k])
     k = k.strip('_')
     return k
+
+
+def get_type(name, value):
+    if isinstance(value, float) or isinstance(value, int):
+        return 'd'  # double
+    elif isinstance(value, datetime.datetime):
+        return 'datetime64[ns]'  # double
+    elif isinstance(value, str):
+        return 'str'
+    else:
+        raise Exception('unsupported data type {} {}'.format(name, type(value)))
 
 
 class FileFormat(Enum):

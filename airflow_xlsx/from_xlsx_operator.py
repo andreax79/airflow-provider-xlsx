@@ -10,6 +10,7 @@ from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
 from airflow_xlsx.commons import (
     clean_key,
+    get_type,
     FileFormat,
     DEFAULT_CSV_DELIMITER,
     DEFAULT_CSV_HEADER,
@@ -54,7 +55,7 @@ class FromXLSXOperator(BaseOperator):
         :param types: force columns types (dict or list column='str', 'd', 'datetime64[ns]')
         :param columns_names: force columns names (list)
         :param file_format: target file format ('parquet' or 'csv')
-        :param csv_delimiter: CSV delimiter (defualt: ',')
+        :param csv_delimiter: CSV delimiter (default: ',')
         :param csv_header: convert CSV header case ('lower', 'upper', 'skip')
         """
         super(FromXLSXOperator, self).__init__(*args, **kwargs)
@@ -77,16 +78,6 @@ class FromXLSXOperator(BaseOperator):
         self.file_format = FileFormat.lookup(file_format)
         self.csv_delimiter = csv_delimiter
         self.csv_header = csv_header
-
-    def get_type(self, name, value):
-        if isinstance(value, float) or isinstance(value, int):
-            return 'd'  # double
-        elif isinstance(value, datetime.datetime):
-            return 'datetime64[ns]'  # double
-        elif isinstance(value, str):
-            return 'str'
-        else:
-            raise Exception('unsupported data type {} {}'.format(name, type(value)))
 
     @classmethod
     def load_worksheet_xls(cls, filename, worksheet):
@@ -151,7 +142,7 @@ class FromXLSXOperator(BaseOperator):
                 datatypes['_index'] = 'd'
             columns = dict([(name, []) for name in names])
             for name, value in self.add_columns.items():
-                datatypes[name] = self.get_type(name, value)
+                datatypes[name] = get_type(name, value)
                 columns[name] = []
             for _index, row in enumerate(rows[1:]):
                 for i, name in enumerate(names):
@@ -163,7 +154,7 @@ class FromXLSXOperator(BaseOperator):
                     if isinstance(value, str):
                         value = value.strip()
                     if datatypes[name] is None and value is not None:
-                        datatypes[name] = self.get_type(name, value)
+                        datatypes[name] = get_type(name, value)
                     if datatypes[name] == 'datetime64[ns]':
                         if not value:
                             value = None
@@ -177,16 +168,13 @@ class FromXLSXOperator(BaseOperator):
                 for name, value in self.add_columns.items():
                     if name not in names:
                         columns[name].append(value)
-            if self.file_format == FileFormat.csv:
-                self.write_csv(columns, datatypes)
-            else:
-                self.write_parquet(names, columns, datatypes)
+            self.write(names, columns, datatypes)
         except Exception as e:
             raise AirflowException("XLSXToParquet operator error: {0}".format(str(e)))
         return True
 
     def write_parquet(self, names, columns, datatypes):
-        # Write the results in parquet format
+        " Write the results in parquet format "
         import pandas as pd
         import pyarrow.parquet
 
@@ -203,8 +191,8 @@ class FromXLSXOperator(BaseOperator):
             flavor='spark',
         )
 
-    def write_csv(self, columns, datatypes):
-        # Write data to CSV file
+    def write_csv(self, names, columns, datatypes):
+        " Write data to CSV file "
         import csv
 
         data = zip(*[columns[k] for k in datatypes])
@@ -217,6 +205,13 @@ class FromXLSXOperator(BaseOperator):
             elif self.csv_header == HEADER_LOWER:
                 csw_writer.writerows([datatypes.keys()])  # header
             csw_writer.writerows(data)
+
+    def write(self, names, columns, datatypes):
+        " Write data to file "
+        if self.file_format == FileFormat.csv:
+            self.write_csv(names, columns, datatypes)
+        else:
+            self.write_parquet(names, columns, datatypes)
 
 
 if __name__ == "__main__":

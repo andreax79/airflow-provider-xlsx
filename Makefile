@@ -22,6 +22,9 @@ clean:
 	-rm -rf build dist
 	-rm -rf *.egg-info
 
+doc:
+	cd docs; $(MAKE) html
+
 test:
 	@./scripts/tests.sh
 
