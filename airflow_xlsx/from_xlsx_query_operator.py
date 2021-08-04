@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
+import csv
 import sqlite3
 from airflow.utils.decorators import apply_defaults
 from airflow.exceptions import AirflowException
 from airflow_xlsx.commons import (
     get_type,
+    quoted,
+    col_number_to_name,
     FileFormat,
     DEFAULT_CSV_DELIMITER,
     DEFAULT_CSV_HEADER,
@@ -16,30 +19,6 @@ from airflow_xlsx.commons import (
 from airflow_xlsx.from_xlsx_operator import FromXLSXOperator
 
 __all__ = ['FromXLSXQueryOperator']
-
-INDEX_COLUMN_NAME = '_index'
-
-
-def quoted(string):
-    return "'" + string + "'"
-
-
-def col_number_to_name(col_number):
-    """
-    Convert a column number to name (e.g. 0 -> '_index', 0 -> A, 1 -> B)
-
-    :param col_number: column number
-    """
-
-    def _col_number_to_name(x):
-        return (_col_number_to_name((x // 26) - 1) if x >= 26 else '') + chr(
-            65 + (x % 26)
-        )
-
-    if col_number == 0:
-        return INDEX_COLUMN_NAME
-    else:
-        return _col_number_to_name(col_number - 1)
 
 
 class FromXLSXQueryOperator(FromXLSXOperator):
@@ -108,11 +87,11 @@ class FromXLSXQueryOperator(FromXLSXOperator):
 
     def write_csv(self, result):
         " Write data to CSV file "
-        import csv
-
         data = list(zip(*[result.columns[x] for x in result.columns.keys()]))
         with open(self.target, 'w') as f:
-            csw_writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
+            csw_writer = csv.writer(
+                f, quoting=csv.QUOTE_MINIMAL, delimiter=self.csv_delimiter
+            )
             if self.csv_header == HEADER_UPPER:
                 csw_writer.writerow(
                     [x.upper() for x in result.columns.keys()]
@@ -167,8 +146,7 @@ class Result(object):
             )
             # Create table
             create_table_sql = 'create table {table}({columns})'.format(
-                table=self.table_name,
-                columns=sql_columns
+                table=self.table_name, columns=sql_columns
             )
             conn.execute(create_table_sql)
             # Insert data

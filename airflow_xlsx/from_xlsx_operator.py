@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import csv
 import os
 import os.path
 import datetime
@@ -11,10 +12,12 @@ from airflow.utils.decorators import apply_defaults
 from airflow_xlsx.commons import (
     clean_key,
     get_type,
+    col_number_to_name,
     FileFormat,
     DEFAULT_CSV_DELIMITER,
     DEFAULT_CSV_HEADER,
     DEFAULT_FORMAT,
+    INDEX_COLUMN_NAME,
     HEADER_UPPER,
     HEADER_LOWER,
     XLS_EPOC,
@@ -38,6 +41,7 @@ class FromXLSXOperator(BaseOperator):
         add_columns=None,
         types=None,
         columns_names=None,
+        limit=None,
         file_format=DEFAULT_FORMAT,
         csv_delimiter=DEFAULT_CSV_DELIMITER,
         csv_header=DEFAULT_CSV_HEADER,
@@ -54,6 +58,7 @@ class FromXLSXOperator(BaseOperator):
         :param add_columns: columns to be added (dict or list column=value)
         :param types: force columns types (dict or list column='str', 'd', 'datetime64[ns]')
         :param columns_names: force columns names (list)
+        :param limit: Row limit (default: None)
         :param file_format: target file format ('parquet' or 'csv')
         :param csv_delimiter: CSV delimiter (default: ',')
         :param csv_header: convert CSV header case ('lower', 'upper', 'skip')
@@ -76,6 +81,7 @@ class FromXLSXOperator(BaseOperator):
             self.types = types or {}
         self.names = columns_names
         self.file_format = FileFormat.lookup(file_format)
+        self.limit = limit
         self.csv_delimiter = csv_delimiter
         self.csv_header = csv_header
 
@@ -92,7 +98,7 @@ class FromXLSXOperator(BaseOperator):
             if not t:
                 raise Exception('Worksheet ' + worksheet + ' not found')
             sheet = t[0]
-        # prepare an XLSX sheet
+        # Prepare an XLSX sheet
         xsheet = Workbook().worksheets[0]
         for row in range(0, sheet.nrows):
             for col in range(0, sheet.ncols):
@@ -103,8 +109,9 @@ class FromXLSXOperator(BaseOperator):
                 elif cell_type == xlrd.XL_CELL_NUMBER:
                     if isinstance(value, float) and value.is_integer():
                         value = int(value)
-                    print(value, type(value), sheet.cell_type(row, col))
+                    # print(value, type(value), sheet.cell_type(row, col))
                 xsheet.cell(row=row + 1, column=col + 1).value = value
+        assert xsheet.max_row == sheet.nrows
         return xsheet
 
     @classmethod
@@ -137,17 +144,30 @@ class FromXLSXOperator(BaseOperator):
                 names = self.names
             else:
                 names = [clean_key(x.value) for x in rows[0] if x.value is not None]
+                # Append the column to the name if the name is not unique
+                names = [
+                    x
+                    if (i == 0 or x not in names[: i - 1])
+                    else '{}_{}'.format(x, col_number_to_name(i).lower())
+                    for i, x in enumerate(names)
+                ]
+            # Check unique columns
+            if len(set(names)) != len(names):
+                duplicates = list(set([x for x in names if names.count(x) > 1]))
+                raise Exception('Columns names are not unique: {0}'.format(duplicates))
             datatypes = dict([(name, self.types.get(name)) for name in names])
-            if '_index' in datatypes:
-                datatypes['_index'] = 'd'
+            if INDEX_COLUMN_NAME in datatypes:
+                datatypes[INDEX_COLUMN_NAME] = 'd'
             columns = dict([(name, []) for name in names])
             for name, value in self.add_columns.items():
                 datatypes[name] = get_type(name, value)
                 columns[name] = []
             for _index, row in enumerate(rows[1:]):
+                if self.limit is not None and _index >= self.limit:
+                    break
                 for i, name in enumerate(names):
-                    if name == '_index':
-                        columns['_index'].append(_index)
+                    if name == INDEX_COLUMN_NAME:
+                        columns[INDEX_COLUMN_NAME].append(_index)
                         continue
                     cel = row[i]
                     value = cel.value
@@ -168,6 +188,11 @@ class FromXLSXOperator(BaseOperator):
                 for name, value in self.add_columns.items():
                     if name not in names:
                         columns[name].append(value)
+            row_num = sheet.max_row - 1
+            if self.limit is not None:
+                row_num = min(row_num, self.limit)
+            for i, name in enumerate(names):
+                assert len(columns[name]) == row_num # check rows number (skip header)
             self.write(names, columns, datatypes)
         except Exception as e:
             raise AirflowException("XLSXToParquet operator error: {0}".format(str(e)))
@@ -193,8 +218,6 @@ class FromXLSXOperator(BaseOperator):
 
     def write_csv(self, names, columns, datatypes):
         " Write data to CSV file "
-        import csv
-
         data = zip(*[columns[k] for k in datatypes])
         with open(self.target, 'w') as f:
             csw_writer = csv.writer(

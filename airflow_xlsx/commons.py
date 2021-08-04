@@ -10,6 +10,8 @@ from enum import Enum
 __all__ = [
     'rmdiacritics',
     'clean_key',
+    'quoted',
+    'col_number_to_name',
     'get_type',
     'FileFormat',
     'HEADER_LOWER',
@@ -19,6 +21,7 @@ __all__ = [
     'DEFAULT_CSV_DELIMITER',
     'DEFAULT_CSV_HEADER',
     'DEFAULT_TABLE_NAME',
+    'INDEX_COLUMN_NAME',
     'XLS_EPOC',
     'XLSX_EPOC',
     'VERSION',
@@ -39,6 +42,8 @@ XLS_EPOC = datetime.datetime(1899, 12, 30)
 XLSX_EPOC = datetime.datetime(1900, 1, 1)
 #: Default Query Operator table name
 DEFAULT_TABLE_NAME = 'xls'
+#: Index colummn name
+INDEX_COLUMN_NAME = '_index'
 
 
 VERSION_FILE = os.path.join(os.path.dirname(__file__), "VERSION")
@@ -60,12 +65,34 @@ def rmdiacritics(char):
     return char
 
 
+def quoted(string):
+    return "'" + string + "'"
+
+
 def clean_key(k):
     k = k.strip().lower().replace('-', '').replace('€', '')
     k = re.sub('[\ \'\<\>\(\)\.\,\/\_]+', '_', k)
     k = ''.join([rmdiacritics(x) for x in k])
     k = k.strip('_')
     return k
+
+
+def col_number_to_name(col_number):
+    """
+    Convert a column number to name (e.g. 0 -> '_index', 0 -> A, 1 -> B)
+
+    :param col_number: column number
+    """
+
+    def _col_number_to_name(x):
+        return (_col_number_to_name((x // 26) - 1) if x >= 26 else '') + chr(
+            65 + (x % 26)
+        )
+
+    if col_number == 0:
+        return INDEX_COLUMN_NAME
+    else:
+        return _col_number_to_name(col_number - 1)
 
 
 def get_type(name, value):
