@@ -53,7 +53,7 @@ with open(VERSION_FILE) as f:
 
 
 def rmdiacritics(char):
-    " Return the base character without diacritics (eg. accents) "
+    "Return the base character without diacritics (eg. accents)"
     desc = unicodedata.name(char)
     cutoff = desc.find(' WITH ')
     if cutoff != -1:
@@ -107,7 +107,7 @@ def get_type(name, value):
 
 
 class FileFormat(Enum):
-    " File format enumerator (parquet/csv) "
+    "File format enumerator (parquet/csv)"
     parquet = 'parquet'
     csv = 'csv'
 

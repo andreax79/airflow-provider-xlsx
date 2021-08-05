@@ -11,8 +11,8 @@ lint:
 	python3 setup.py flake8
 
 tag:
-	@grep -q "## $$(cat airflow_xlsx/VERSION)" changelog.txt || (echo "Missing changelog !!! Update changelog.txt"; exit 1)
-	@git tag -a "v$$(cat airflow_xlsx/VERSION)" -m "version v$$(cat airflow_xlsx/VERSION)"
+	@grep -q "## $$(cat xlsx_provider/VERSION)" changelog.txt || (echo "Missing changelog !!! Update changelog.txt"; exit 1)
+	@git tag -a "v$$(cat xlsx_provider/VERSION)" -m "version v$$(cat xlsx_provider/VERSION)"
 
 build: clean
 	python3 setup.py bdist_wheel

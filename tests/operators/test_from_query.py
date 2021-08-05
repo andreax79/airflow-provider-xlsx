@@ -6,7 +6,7 @@ import os.path
 import shutil
 import tempfile
 from unittest import TestCase, main
-from airflow_xlsx.from_xlsx_query_operator import FromXLSXQueryOperator
+from xlsx_provider.operators.from_xlsx_query_operator import FromXLSXQueryOperator
 
 TEST_DATA = [
     ['One', '2021-09-07 00:00:00', '0.1', '1', '10', '0.1'],

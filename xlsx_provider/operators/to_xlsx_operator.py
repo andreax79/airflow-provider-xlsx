@@ -4,25 +4,30 @@ import csv
 from openpyxl import Workbook
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
-from airflow_xlsx.commons import FileFormat, DEFAULT_CSV_DELIMITER
+from xlsx_provider.commons import FileFormat, DEFAULT_CSV_DELIMITER
 
 __all__ = ['ToXLSXOperator']
 
 
 class ToXLSXOperator(BaseOperator):
-    FileFormat = FileFormat
+    """
+    Convert a Parquet or CSV file into XLSX or XLS
 
+    :param source: source filename (csv or parquet, detected by the extension, templated)
+    :type source: str
+    :param target: target filename (xlsx, templated)
+    :type target: str
+    :param csv_delimiter: CSV delimiter (default: ',')
+    :type csv_delimiter: str
+    """
+
+    FileFormat = FileFormat
     template_fields = ('source', 'target')
 
     @apply_defaults
     def __init__(
         self, source, target, csv_delimiter=DEFAULT_CSV_DELIMITER, *args, **kwargs
     ):
-        """
-        :param source: source filename (csv or parquest, detected by the extension)
-        :param target: target filename (xlsx)
-        :param csv_delimiter: CSV delimiter (default: ',')
-        """
         super(ToXLSXOperator, self).__init__(*args, **kwargs)
         self.source = source
         self.target = target

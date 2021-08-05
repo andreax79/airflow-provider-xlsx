@@ -8,7 +8,7 @@ import sys
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('..'))
 
-VERSION_FILE = os.path.join(os.path.abspath('..'), "airflow_xlsx", "VERSION")
+VERSION_FILE = os.path.join(os.path.abspath('..'), "xlsx_provider", "VERSION")
 with open(VERSION_FILE) as f:
     VERSION = f.read().strip()
 
@@ -34,7 +34,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'airflow-xlsx-plugin'
+project = u'airflow-provider-xlsx'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -150,7 +150,7 @@ html_theme = 'default'
 html_show_copyright = False
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'airflow_xlsx'
+htmlhelp_basename = 'xlsx_provider'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -169,8 +169,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'airflow_xlsx.tex', u'airflow-xlsx-plugin Documentation',
-   u'airflow-xlsx-plugin contributors', 'manual'),
+  ('index', 'xlsx_provider.tex', u'airflow-provider-xlsx Documentation',
+   u'airflow-provider-xlsx contributors', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -199,8 +199,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'airflow_xlsx', u'airflow-xlsx-plugin Documentation',
-     [u'airflow-xlsx-plugin contributors'], 1)
+    ('index', 'xlsx_provider', u'airflow-provider-xlsx Documentation',
+     [u'airflow-provider-xlsx contributors'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -213,8 +213,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'airflow_xlsx', u'airflow-xlsx-plugin Documentation',
-   u'airflow-xlsx-plugin contributors', 'airflow_xlsx',
+  ('index', 'xlsx_provider', u'airflow-provider-xlsx Documentation',
+   u'airflow-provider-xlsx contributors', 'xlsx_provider',
    'Airflow operators for converting XLSX files from/to Parquet/CSV',
    'Miscellaneous'),
 ]

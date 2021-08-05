@@ -9,7 +9,7 @@ from openpyxl import load_workbook, Workbook
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
-from airflow_xlsx.commons import (
+from xlsx_provider.commons import (
     clean_key,
     get_type,
     col_number_to_name,
@@ -28,8 +28,37 @@ __all__ = ['FromXLSXOperator']
 
 
 class FromXLSXOperator(BaseOperator):
+    """
+    Convert an XLSX/XLS file into Parquet or CSV file
+
+    Read an XLSX or XLS file and convert it into Parquet or CSV.
+
+    :param source: source filename (XLSX or XLS, templated)
+    :type source: str
+    :param target: target filename (Parquet or CSV, templated)
+    :type target: str
+    :param worksheet: worksheet title or number (zero-based, templated)
+    :type worksheet: str or int
+    :param drop_columns: list of columns to be dropped
+    :type drop_columns: list of str
+    :param add_columns: columns to be added (dict or list column=value)
+    :type add_columns: list of str or dictionary of string key/value pair
+    :param types: force columns types (dict or list column='str', 'd', 'datetime64[ns]')
+    :type types: str or dictionary of string key/value pair
+    :param columns_names: force columns names (list)
+    :type columns_names: list of str
+    :param limit: Row limit (default: None, templated)
+    :type limit: int
+    :param file_format: target file format ('parquet' or 'csv')
+    :type file_format: str
+    :param csv_delimiter: CSV delimiter (default: ',')
+    :type csv_delimiter: str
+    :param csv_header: convert CSV header case ('lower', 'upper', 'skip')
+    :type csv_header: str
+    """
+
     FileFormat = FileFormat
-    template_fields = ('source', 'target', 'worksheet')
+    template_fields = ('source', 'target', 'worksheet', 'limit')
 
     @apply_defaults
     def __init__(
@@ -48,21 +77,6 @@ class FromXLSXOperator(BaseOperator):
         *args,
         **kwargs
     ):
-        """
-        Convert an XLSX/XLS file into Parquet or CSV file
-
-        :param source: source filename (xlsx or xls)
-        :param target: target filename (csv or parquet)
-        :param worksheet: worksheet title or number (zero-based)
-        :param drop_columns: list of columns to be dropped
-        :param add_columns: columns to be added (dict or list column=value)
-        :param types: force columns types (dict or list column='str', 'd', 'datetime64[ns]')
-        :param columns_names: force columns names (list)
-        :param limit: Row limit (default: None)
-        :param file_format: target file format ('parquet' or 'csv')
-        :param csv_delimiter: CSV delimiter (default: ',')
-        :param csv_header: convert CSV header case ('lower', 'upper', 'skip')
-        """
         super(FromXLSXOperator, self).__init__(*args, **kwargs)
         self.source = source
         self.target = target
@@ -192,14 +206,14 @@ class FromXLSXOperator(BaseOperator):
             if self.limit is not None:
                 row_num = min(row_num, self.limit)
             for i, name in enumerate(names):
-                assert len(columns[name]) == row_num # check rows number (skip header)
+                assert len(columns[name]) == row_num  # check rows number (skip header)
             self.write(names, columns, datatypes)
         except Exception as e:
             raise AirflowException("XLSXToParquet operator error: {0}".format(str(e)))
         return True
 
     def write_parquet(self, names, columns, datatypes):
-        " Write the results in parquet format "
+        "Write the results in parquet format"
         import pandas as pd
         import pyarrow.parquet
 
@@ -217,7 +231,7 @@ class FromXLSXOperator(BaseOperator):
         )
 
     def write_csv(self, names, columns, datatypes):
-        " Write data to CSV file "
+        "Write data to CSV file"
         data = zip(*[columns[k] for k in datatypes])
         with open(self.target, 'w') as f:
             csw_writer = csv.writer(
@@ -230,7 +244,7 @@ class FromXLSXOperator(BaseOperator):
             csw_writer.writerows(data)
 
     def write(self, names, columns, datatypes):
-        " Write data to file "
+        "Write data to file"
         if self.file_format == FileFormat.csv:
             self.write_csv(names, columns, datatypes)
         else:

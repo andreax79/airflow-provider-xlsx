@@ -4,7 +4,7 @@ import csv
 import sqlite3
 from airflow.utils.decorators import apply_defaults
 from airflow.exceptions import AirflowException
-from airflow_xlsx.commons import (
+from xlsx_provider.commons import (
     get_type,
     quoted,
     col_number_to_name,
@@ -16,12 +16,38 @@ from airflow_xlsx.commons import (
     HEADER_UPPER,
     HEADER_LOWER,
 )
-from airflow_xlsx.from_xlsx_operator import FromXLSXOperator
+from xlsx_provider.operators.from_xlsx_operator import FromXLSXOperator
 
 __all__ = ['FromXLSXQueryOperator']
 
 
 class FromXLSXQueryOperator(FromXLSXOperator):
+    """
+    Execute an SQL query an XLSX/XLS file and export the result into a Parquet or CSV file
+
+    This operators loads an XLSX or XLS file into an in-memory SQLite database,
+    executes a query on the db and stores the result into a Parquet or CSV file.
+    The output columns names and types are determinated by the SQL query output.
+
+    :param source: source filename (XLSX or XLS, templated)
+    :type source: str
+    :param target: target filename (Parquet or CSV, templated)
+    :type target: str
+    :param worksheet: worksheet title or number (zero-based, templated)
+    :type worksheet: str or int
+    :param types: force column type (dict or list column='str', 'd', 'datetime64[ns]')
+    :type types: str or dictionary of string key/value pair
+    :param file_format: output file format (parquet, csv)
+    :type file_format: str
+    :param csv_delimiter: CSV delimiter (default: ',')
+    :type csv_delimiter: str
+    :param csv_header: convert CSV header case ('lower', 'upper', 'skip')
+    :type csv_header: str
+    :param query: SQL query (templated)
+    :type query: str
+    :param table_name: Table name (default: 'xls', templated)
+    """
+
     FileFormat = FileFormat
     template_fields = ('source', 'target', 'worksheet', 'query', 'table_name')
 
@@ -40,19 +66,6 @@ class FromXLSXQueryOperator(FromXLSXOperator):
         *args,
         **kwargs
     ):
-        """
-        Execute an SQL query an XLSX/XLS file and export the result into a Parquet or CSV file
-
-        :param source: source filename (xlsx or xls)
-        :param target: target filename (csv or parquet)
-        :param worksheet: worksheet title or number (zero-based)
-        :param types: force column type (dict or list column='str', 'd', 'datetime64[ns]')
-        :param file_format: output file format (parquet, csv)
-        :param csv_delimiter: CSV delimiter (default: ',')
-        :param csv_header: convert CSV header case ('lower', 'upper', 'skip')
-        :param query: SQL query
-        :param table_name: Table name (default: 'xls')
-        """
         super(FromXLSXQueryOperator, self).__init__(
             *args,
             **kwargs,
@@ -68,7 +81,7 @@ class FromXLSXQueryOperator(FromXLSXOperator):
         self.table_name = table_name
 
     def write_parquet(self, result):
-        " Write the results in parquet format "
+        "Write the results in parquet format"
         import pandas as pd
         import pyarrow.parquet
 
@@ -86,7 +99,7 @@ class FromXLSXQueryOperator(FromXLSXOperator):
         )
 
     def write_csv(self, result):
-        " Write data to CSV file "
+        "Write data to CSV file"
         data = list(zip(*[result.columns[x] for x in result.columns.keys()]))
         with open(self.target, 'w') as f:
             csw_writer = csv.writer(
@@ -103,7 +116,7 @@ class FromXLSXQueryOperator(FromXLSXOperator):
             csw_writer.writerows(data)
 
     def write(self, result):
-        " Write data to file "
+        "Write data to file"
         if self.file_format == FileFormat.csv:
             self.write_csv(result)
         else:

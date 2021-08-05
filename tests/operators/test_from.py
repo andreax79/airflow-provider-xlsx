@@ -5,10 +5,9 @@ import csv
 import os.path
 import shutil
 import tempfile
-import pandas as pd
 import pyarrow.parquet
 from unittest import TestCase, main
-from airflow_xlsx.from_xlsx_operator import FromXLSXOperator
+from xlsx_provider.operators.from_xlsx_operator import FromXLSXOperator
 
 TEST_DATA = [
     ['One', '2021-09-07 00:00:00', '10', '1', '10', '0.0001'],

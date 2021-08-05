@@ -1,0 +1,373 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>xlsx_provider.operators.from_xlsx_operator &#8212; airflow-provider-xlsx 0.0.3 documentation</title>
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 0.0.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">xlsx_provider.operators.from_xlsx_operator</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for xlsx_provider.operators.from_xlsx_operator</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="kn">import</span> <span class="nn">csv</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">dateutil.parser</span>
+<span class="kn">from</span> <span class="nn">openpyxl</span> <span class="kn">import</span> <span class="n">load_workbook</span><span class="p">,</span> <span class="n">Workbook</span>
+<span class="kn">from</span> <span class="nn">airflow.exceptions</span> <span class="kn">import</span> <span class="n">AirflowException</span>
+<span class="kn">from</span> <span class="nn">airflow.models</span> <span class="kn">import</span> <span class="n">BaseOperator</span>
+<span class="kn">from</span> <span class="nn">airflow.utils.decorators</span> <span class="kn">import</span> <span class="n">apply_defaults</span>
+<span class="kn">from</span> <span class="nn">xlsx_provider.commons</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">clean_key</span><span class="p">,</span>
+    <span class="n">get_type</span><span class="p">,</span>
+    <span class="n">col_number_to_name</span><span class="p">,</span>
+    <span class="n">FileFormat</span><span class="p">,</span>
+    <span class="n">DEFAULT_CSV_DELIMITER</span><span class="p">,</span>
+    <span class="n">DEFAULT_CSV_HEADER</span><span class="p">,</span>
+    <span class="n">DEFAULT_FORMAT</span><span class="p">,</span>
+    <span class="n">INDEX_COLUMN_NAME</span><span class="p">,</span>
+    <span class="n">HEADER_UPPER</span><span class="p">,</span>
+    <span class="n">HEADER_LOWER</span><span class="p">,</span>
+    <span class="n">XLS_EPOC</span><span class="p">,</span>
+    <span class="n">XLSX_EPOC</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;FromXLSXOperator&#39;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="FromXLSXOperator"><a class="viewcode-back" href="../../../index.html#xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator">[docs]</a><span class="k">class</span> <span class="nc">FromXLSXOperator</span><span class="p">(</span><span class="n">BaseOperator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert an XLSX/XLS file into Parquet or CSV file</span>
+
+<span class="sd">    Read an XLSX or XLS file and convert it into Parquet or CSV.</span>
+
+<span class="sd">    :param source: source filename (XLSX or XLS, templated)</span>
+<span class="sd">    :type source: str</span>
+<span class="sd">    :param target: target filename (Parquet or CSV, templated)</span>
+<span class="sd">    :type target: str</span>
+<span class="sd">    :param worksheet: worksheet title or number (zero-based, templated)</span>
+<span class="sd">    :type worksheet: str or int</span>
+<span class="sd">    :param drop_columns: list of columns to be dropped</span>
+<span class="sd">    :type drop_columns: list of str</span>
+<span class="sd">    :param add_columns: columns to be added (dict or list column=value)</span>
+<span class="sd">    :type add_columns: list of str or dictionary of string key/value pair</span>
+<span class="sd">    :param types: force columns types (dict or list column=&#39;str&#39;, &#39;d&#39;, &#39;datetime64[ns]&#39;)</span>
+<span class="sd">    :type types: str or dictionary of string key/value pair</span>
+<span class="sd">    :param columns_names: force columns names (list)</span>
+<span class="sd">    :type columns_names: list of str</span>
+<span class="sd">    :param limit: Row limit (default: None, templated)</span>
+<span class="sd">    :type limit: int</span>
+<span class="sd">    :param file_format: target file format (&#39;parquet&#39; or &#39;csv&#39;)</span>
+<span class="sd">    :type file_format: str</span>
+<span class="sd">    :param csv_delimiter: CSV delimiter (default: &#39;,&#39;)</span>
+<span class="sd">    :type csv_delimiter: str</span>
+<span class="sd">    :param csv_header: convert CSV header case (&#39;lower&#39;, &#39;upper&#39;, &#39;skip&#39;)</span>
+<span class="sd">    :type csv_header: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">FileFormat</span> <span class="o">=</span> <span class="n">FileFormat</span>
+    <span class="n">template_fields</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">,</span> <span class="s1">&#39;target&#39;</span><span class="p">,</span> <span class="s1">&#39;worksheet&#39;</span><span class="p">,</span> <span class="s1">&#39;limit&#39;</span><span class="p">)</span>
+
+    <span class="nd">@apply_defaults</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">source</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">,</span>
+        <span class="n">worksheet</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">drop_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">add_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">types</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">columns_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">file_format</span><span class="o">=</span><span class="n">DEFAULT_FORMAT</span><span class="p">,</span>
+        <span class="n">csv_delimiter</span><span class="o">=</span><span class="n">DEFAULT_CSV_DELIMITER</span><span class="p">,</span>
+        <span class="n">csv_header</span><span class="o">=</span><span class="n">DEFAULT_CSV_HEADER</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FromXLSXOperator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">=</span> <span class="n">source</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">worksheet</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">worksheet</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">worksheet</span> <span class="o">=</span> <span class="n">worksheet</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drop_columns</span> <span class="o">=</span> <span class="n">drop_columns</span> <span class="ow">or</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">add_columns</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_columns</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">add_columns</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_columns</span> <span class="o">=</span> <span class="n">add_columns</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">types</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">types</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">types</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">types</span> <span class="o">=</span> <span class="n">types</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="n">columns_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_format</span> <span class="o">=</span> <span class="n">FileFormat</span><span class="o">.</span><span class="n">lookup</span><span class="p">(</span><span class="n">file_format</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="o">=</span> <span class="n">limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">csv_delimiter</span> <span class="o">=</span> <span class="n">csv_delimiter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">csv_header</span> <span class="o">=</span> <span class="n">csv_header</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">load_worksheet_xls</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">worksheet</span><span class="p">):</span>
+        <span class="c1"># Load a worksheet from an XLS file</span>
+        <span class="kn">import</span> <span class="nn">xlrd</span>
+
+        <span class="n">wb</span> <span class="o">=</span> <span class="n">xlrd</span><span class="o">.</span><span class="n">open_workbook</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">worksheet</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">sheet</span> <span class="o">=</span> <span class="n">wb</span><span class="o">.</span><span class="n">sheets</span><span class="p">()[</span><span class="n">worksheet</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1">#  get by name</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">wb</span><span class="o">.</span><span class="n">sheet_names</span><span class="p">()</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">worksheet</span><span class="o">.</span><span class="n">lower</span><span class="p">()][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Worksheet &#39;</span> <span class="o">+</span> <span class="n">worksheet</span> <span class="o">+</span> <span class="s1">&#39; not found&#39;</span><span class="p">)</span>
+            <span class="n">sheet</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># Prepare an XLSX sheet</span>
+        <span class="n">xsheet</span> <span class="o">=</span> <span class="n">Workbook</span><span class="p">()</span><span class="o">.</span><span class="n">worksheets</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">sheet</span><span class="o">.</span><span class="n">nrows</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">sheet</span><span class="o">.</span><span class="n">ncols</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">sheet</span><span class="o">.</span><span class="n">cell_value</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
+                <span class="n">cell_type</span> <span class="o">=</span> <span class="n">sheet</span><span class="o">.</span><span class="n">cell_type</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">cell_type</span> <span class="o">==</span> <span class="n">xlrd</span><span class="o">.</span><span class="n">XL_CELL_DATE</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">XLS_EPOC</span> <span class="o">+</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">cell_type</span> <span class="o">==</span> <span class="n">xlrd</span><span class="o">.</span><span class="n">XL_CELL_NUMBER</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">is_integer</span><span class="p">():</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="c1"># print(value, type(value), sheet.cell_type(row, col))</span>
+                <span class="n">xsheet</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="n">row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">col</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">assert</span> <span class="n">xsheet</span><span class="o">.</span><span class="n">max_row</span> <span class="o">==</span> <span class="n">sheet</span><span class="o">.</span><span class="n">nrows</span>
+        <span class="k">return</span> <span class="n">xsheet</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">load_worksheet_xlsx</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">worksheet</span><span class="p">):</span>
+        <span class="c1"># Load a worksheet from an XLSX file</span>
+        <span class="n">wb</span> <span class="o">=</span> <span class="n">load_workbook</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">data_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">worksheet</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">sheet</span> <span class="o">=</span> <span class="n">wb</span><span class="o">.</span><span class="n">worksheets</span><span class="p">[</span><span class="n">worksheet</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1">#  get by name</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">wb</span><span class="o">.</span><span class="n">worksheets</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">title</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">worksheet</span><span class="o">.</span><span class="n">lower</span><span class="p">()][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Worksheet &#39;</span> <span class="o">+</span> <span class="n">worksheet</span> <span class="o">+</span> <span class="s1">&#39; not found&#39;</span><span class="p">)</span>
+            <span class="n">sheet</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">sheet</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">load_worksheet</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">worksheet</span><span class="p">):</span>
+        <span class="c1"># Load a worksheet from an XLSX or XLS file</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;.xls&#39;</span><span class="p">,</span> <span class="s1">&#39;.xlt&#39;</span><span class="p">]:</span>  <span class="c1">#  Old format</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">load_worksheet_xls</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">worksheet</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1">#  XLS format</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">load_worksheet_xlsx</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">worksheet</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FromXLSXOperator.execute"><a class="viewcode-back" href="../../../index.html#xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator.execute">[docs]</a>    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sheet</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_worksheet</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">,</span> <span class="n">worksheet</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">worksheet</span><span class="p">)</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sheet</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">names</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">clean_key</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+                <span class="c1"># Append the column to the name if the name is not unique</span>
+                <span class="n">names</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">x</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">names</span><span class="p">[:</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+                    <span class="k">else</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">col_number_to_name</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+                <span class="p">]</span>
+            <span class="c1"># Check unique columns</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">names</span><span class="p">))</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+                <span class="n">duplicates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="n">names</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]))</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Columns names are not unique: </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">duplicates</span><span class="p">))</span>
+            <span class="n">datatypes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">))</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">INDEX_COLUMN_NAME</span> <span class="ow">in</span> <span class="n">datatypes</span><span class="p">:</span>
+                <span class="n">datatypes</span><span class="p">[</span><span class="n">INDEX_COLUMN_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;d&#39;</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">name</span><span class="p">,</span> <span class="p">[])</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_columns</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">_index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">_index</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="n">INDEX_COLUMN_NAME</span><span class="p">:</span>
+                        <span class="n">columns</span><span class="p">[</span><span class="n">INDEX_COLUMN_NAME</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_index</span><span class="p">)</span>
+                        <span class="k">continue</span>
+                    <span class="n">cel</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">cel</span><span class="o">.</span><span class="n">value</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;datetime64[ns]&#39;</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="p">:</span>
+                            <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+                        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+                            <span class="n">value</span> <span class="o">=</span> <span class="n">XLSX_EPOC</span> <span class="o">+</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+                            <span class="n">value</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span>
+                        <span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">):</span>
+                            <span class="n">value</span> <span class="o">=</span> <span class="n">dateutil</span><span class="o">.</span><span class="n">parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_columns</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+                        <span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">row_num</span> <span class="o">=</span> <span class="n">sheet</span><span class="o">.</span><span class="n">max_row</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">row_num</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">row_num</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+                <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">])</span> <span class="o">==</span> <span class="n">row_num</span>  <span class="c1"># check rows number (skip header)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">datatypes</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">AirflowException</span><span class="p">(</span><span class="s2">&quot;XLSXToParquet operator error: </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="FromXLSXOperator.write_parquet"><a class="viewcode-back" href="../../../index.html#xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator.write_parquet">[docs]</a>    <span class="k">def</span> <span class="nf">write_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">datatypes</span><span class="p">):</span>
+        <span class="s2">&quot;Write the results in parquet format&quot;</span>
+        <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+        <span class="kn">import</span> <span class="nn">pyarrow.parquet</span>
+
+        <span class="n">all_names</span> <span class="o">=</span> <span class="n">names</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_columns</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">names</span><span class="p">]</span>
+        <span class="n">pd_data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">all_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_columns</span><span class="p">:</span>
+                <span class="n">pd_data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">pd_data</span><span class="p">)</span>
+        <span class="n">pyarrow</span><span class="o">.</span><span class="n">parquet</span><span class="o">.</span><span class="n">write_table</span><span class="p">(</span>
+            <span class="n">table</span><span class="o">=</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">Table</span><span class="o">.</span><span class="n">from_pandas</span><span class="p">(</span><span class="n">df</span><span class="p">),</span>
+            <span class="n">where</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">,</span>
+            <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;SNAPPY&#39;</span><span class="p">,</span>
+            <span class="n">flavor</span><span class="o">=</span><span class="s1">&#39;spark&#39;</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="FromXLSXOperator.write_csv"><a class="viewcode-back" href="../../../index.html#xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator.write_csv">[docs]</a>    <span class="k">def</span> <span class="nf">write_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">datatypes</span><span class="p">):</span>
+        <span class="s2">&quot;Write data to CSV file&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">columns</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">datatypes</span><span class="p">])</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">csw_writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span>
+                <span class="n">f</span><span class="p">,</span> <span class="n">quoting</span><span class="o">=</span><span class="n">csv</span><span class="o">.</span><span class="n">QUOTE_MINIMAL</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">csv_delimiter</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">csv_header</span> <span class="o">==</span> <span class="n">HEADER_UPPER</span><span class="p">:</span>
+                <span class="n">csw_writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">([[</span><span class="n">x</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">datatypes</span><span class="o">.</span><span class="n">keys</span><span class="p">()]])</span>  <span class="c1"># header</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">csv_header</span> <span class="o">==</span> <span class="n">HEADER_LOWER</span><span class="p">:</span>
+                <span class="n">csw_writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">([</span><span class="n">datatypes</span><span class="o">.</span><span class="n">keys</span><span class="p">()])</span>  <span class="c1"># header</span>
+            <span class="n">csw_writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="FromXLSXOperator.write"><a class="viewcode-back" href="../../../index.html#xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">datatypes</span><span class="p">):</span>
+        <span class="s2">&quot;Write data to file&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_format</span> <span class="o">==</span> <span class="n">FileFormat</span><span class="o">.</span><span class="n">csv</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_csv</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">datatypes</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_parquet</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">datatypes</span><span class="p">)</span></div></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">argparse</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;filename&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-w&#39;</span><span class="p">,</span> <span class="s1">&#39;--worksheet&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;worksheet&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-a&#39;</span><span class="p">,</span> <span class="s1">&#39;--add_col&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;add_columns&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;append&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-d&#39;</span><span class="p">,</span> <span class="s1">&#39;--drop_col&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;drop_columns&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;append&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-t&#39;</span><span class="p">,</span> <span class="s1">&#39;--type&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;types&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;append&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s1">&#39;--delimiter&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;csv_delimiter&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">DEFAULT_CSV_DELIMITER</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-o&#39;</span><span class="p">,</span> <span class="s1">&#39;--output&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;output&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s1">&#39;--header&#39;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;csv_header&#39;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;lower&#39;</span><span class="p">,</span> <span class="s1">&#39;upper&#39;</span><span class="p">,</span> <span class="s1">&#39;skip&#39;</span><span class="p">],</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">DEFAULT_CSV_HEADER</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
+    <span class="n">group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--csv&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;file_format_csv&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">)</span>
+    <span class="n">group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s1">&#39;--parquet&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;file_format_csv&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_false&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">file_format</span> <span class="o">=</span> <span class="s1">&#39;csv&#39;</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">file_format_csv</span> <span class="k">else</span> <span class="s1">&#39;parquet&#39;</span>
+    <span class="n">so</span> <span class="o">=</span> <span class="n">FromXLSXOperator</span><span class="p">(</span>
+        <span class="n">task_id</span><span class="o">=</span><span class="s1">&#39;test&#39;</span><span class="p">,</span>
+        <span class="n">source</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output</span> <span class="ow">or</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">filename</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="n">file_format</span><span class="p">),</span>
+        <span class="n">drop_columns</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">drop_columns</span><span class="p">,</span>
+        <span class="n">add_columns</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">add_columns</span><span class="p">,</span>
+        <span class="n">types</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">types</span><span class="p">,</span>
+        <span class="n">file_format</span><span class="o">=</span><span class="n">file_format</span><span class="p">,</span>
+        <span class="n">worksheet</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">worksheet</span><span class="p">,</span>
+        <span class="n">csv_delimiter</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">csv_delimiter</span><span class="p">,</span>
+        <span class="n">csv_header</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">csv_header</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">so</span><span class="o">.</span><span class="n">execute</span><span class="p">({})</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 0.0.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">xlsx_provider.operators.from_xlsx_operator</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.4.3.
+    </div>
+  </body>
+</html>

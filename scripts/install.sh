@@ -8,6 +8,6 @@ if compgen -G "${PARENT_DIR}/dist/*.whl" > /dev/null; then
     echo "Install plugin"
     find "${PARENT_DIR}/dist" -name "*.whl" -exec pip install --no-deps {} --force \;
 else
-    pip uninstall airflow-xlsx-plugin &>/dev/null
+    pip uninstall airflow-provider-xlsx &>/dev/null
     export PYTHONPATH="${PARENT_DIR}:${PYTHONPATH}"
 fi

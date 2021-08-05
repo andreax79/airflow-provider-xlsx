@@ -1,0 +1,202 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>xlsx_provider.commons &#8212; airflow-provider-xlsx 0.0.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">xlsx_provider.commons</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for xlsx_provider.commons</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">unicodedata</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;rmdiacritics&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;clean_key&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;quoted&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;col_number_to_name&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;get_type&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;FileFormat&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;HEADER_LOWER&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;HEADER_UPPER&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;HEADER_SKIP&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DEFAULT_FORMAT&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DEFAULT_CSV_DELIMITER&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DEFAULT_CSV_HEADER&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DEFAULT_TABLE_NAME&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;INDEX_COLUMN_NAME&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;XLS_EPOC&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;XLSX_EPOC&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;VERSION&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">HEADER_LOWER</span> <span class="o">=</span> <span class="s1">&#39;lower&#39;</span>
+<span class="n">HEADER_UPPER</span> <span class="o">=</span> <span class="s1">&#39;upper&#39;</span>
+<span class="n">HEADER_SKIP</span> <span class="o">=</span> <span class="s1">&#39;skip&#39;</span>
+<span class="c1">#: Default output format</span>
+<span class="n">DEFAULT_FORMAT</span> <span class="o">=</span> <span class="s1">&#39;parquet&#39;</span>
+<span class="c1">#: Default CSV delimiter</span>
+<span class="n">DEFAULT_CSV_DELIMITER</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span>
+<span class="c1">#: Default CSV header case</span>
+<span class="n">DEFAULT_CSV_HEADER</span> <span class="o">=</span> <span class="n">HEADER_LOWER</span>
+<span class="c1">#: XLS Epoc - see https://support.microsoft.com/en-us/help/214326/excel-incorrectly-assumes-that-the-year-1900-is-a-leap-year</span>
+<span class="n">XLS_EPOC</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">1899</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+<span class="c1">#: XLSX Epoc</span>
+<span class="n">XLSX_EPOC</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">1900</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="c1">#: Default Query Operator table name</span>
+<span class="n">DEFAULT_TABLE_NAME</span> <span class="o">=</span> <span class="s1">&#39;xls&#39;</span>
+<span class="c1">#: Index colummn name</span>
+<span class="n">INDEX_COLUMN_NAME</span> <span class="o">=</span> <span class="s1">&#39;_index&#39;</span>
+
+
+<span class="n">VERSION_FILE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;VERSION&quot;</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">VERSION_FILE</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="c1">#: Plugin Version</span>
+    <span class="n">VERSION</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="rmdiacritics"><a class="viewcode-back" href="../../index.html#xlsx_provider.operators.from_xlsx_operator.rmdiacritics">[docs]</a><span class="k">def</span> <span class="nf">rmdiacritics</span><span class="p">(</span><span class="n">char</span><span class="p">):</span>
+    <span class="s2">&quot;Return the base character without diacritics (eg. accents)&quot;</span>
+    <span class="n">desc</span> <span class="o">=</span> <span class="n">unicodedata</span><span class="o">.</span><span class="n">name</span><span class="p">(</span><span class="n">char</span><span class="p">)</span>
+    <span class="n">cutoff</span> <span class="o">=</span> <span class="n">desc</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39; WITH &#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cutoff</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">desc</span> <span class="o">=</span> <span class="n">desc</span><span class="p">[:</span><span class="n">cutoff</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">char</span> <span class="o">=</span> <span class="n">unicodedata</span><span class="o">.</span><span class="n">lookup</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">char</span></div>
+
+
+<span class="k">def</span> <span class="nf">quoted</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;&#39;&quot;</span> <span class="o">+</span> <span class="n">string</span> <span class="o">+</span> <span class="s2">&quot;&#39;&quot;</span>
+
+
+<span class="k">def</span> <span class="nf">clean_key</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;€&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;[\ </span><span class="se">\&#39;</span><span class="s1">\&lt;\&gt;\(\)\.\,\/\_]+&#39;</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">rmdiacritics</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">k</span><span class="p">])</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">k</span>
+
+
+<div class="viewcode-block" id="col_number_to_name"><a class="viewcode-back" href="../../index.html#xlsx_provider.operators.from_xlsx_operator.col_number_to_name">[docs]</a><span class="k">def</span> <span class="nf">col_number_to_name</span><span class="p">(</span><span class="n">col_number</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a column number to name (e.g. 0 -&gt; &#39;_index&#39;, 0 -&gt; A, 1 -&gt; B)</span>
+
+<span class="sd">    :param col_number: column number</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_col_number_to_name</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">_col_number_to_name</span><span class="p">((</span><span class="n">x</span> <span class="o">//</span> <span class="mi">26</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">26</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="nb">chr</span><span class="p">(</span>
+            <span class="mi">65</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span> <span class="o">%</span> <span class="mi">26</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">col_number</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">INDEX_COLUMN_NAME</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_col_number_to_name</span><span class="p">(</span><span class="n">col_number</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;d&#39;</span>  <span class="c1"># double</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;datetime64[ns]&#39;</span>  <span class="c1"># double</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;str&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;unsupported data type </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+
+
+<div class="viewcode-block" id="FileFormat"><a class="viewcode-back" href="../../index.html#xlsx_provider.operators.from_xlsx_operator.FileFormat">[docs]</a><span class="k">class</span> <span class="nc">FileFormat</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="s2">&quot;File format enumerator (parquet/csv)&quot;</span>
+    <span class="n">parquet</span> <span class="o">=</span> <span class="s1">&#39;parquet&#39;</span>
+    <span class="n">csv</span> <span class="o">=</span> <span class="s1">&#39;csv&#39;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">lookup</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">file_format</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file_format</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DEFAULT_FORMAT</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file_format</span><span class="p">,</span> <span class="n">FileFormat</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">file_format</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">[</span><span class="n">file_format</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">xlsx_provider.commons</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.4.3.
+    </div>
+  </body>
+</html>
