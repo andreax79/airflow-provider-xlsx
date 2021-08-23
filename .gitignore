@@ -100,8 +100,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-.~lock
-
 /test_virtualenv/bin
 /test_virtualenv/include
 /test_virtualenv/logs
