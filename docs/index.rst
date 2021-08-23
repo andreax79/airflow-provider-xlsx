@@ -19,6 +19,7 @@ xlsx_provider.operators.operators.from_xlsx_query_operator
 
 .. automodule:: xlsx_provider.operators.from_xlsx_query_operator
    :members:
+   :noindex:
 
 
 xlsx_provider.operators.operators.to_xlsx_operator
@@ -26,6 +27,7 @@ xlsx_provider.operators.operators.to_xlsx_operator
 
 .. automodule:: xlsx_provider.operators.to_xlsx_operator
    :members:
+   :noindex:
 
 xlsx_provider.commons
 ---------------------
