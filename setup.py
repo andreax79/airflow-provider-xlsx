@@ -16,7 +16,7 @@ with open(os.path.join(HERE, "requirements.txt"), "r") as f:
 
 
 setup(
-    name="xlsx_provider_plugin",
+    name="airflow-provider-xlsx",
     version=version,
     packages=find_packages(exclude=["scripts", "scripts.*", "tests", "tests.*"]),
     include_package_data=True,
