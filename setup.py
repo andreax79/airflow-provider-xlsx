@@ -8,7 +8,7 @@ VERSION_FILE = os.path.join(HERE, 'xlsx_provider', 'VERSION')
 with open(VERSION_FILE) as f:
     version = f.read().strip()
 
-with open(os.path.join(HERE, "README.rst"), "r") as f:
+with open(os.path.join(HERE, "README.md"), "r") as f:
     long_description = f.read()
 
 with open(os.path.join(HERE, "requirements.txt"), "r") as f:

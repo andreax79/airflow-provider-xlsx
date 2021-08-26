@@ -1,17 +1,43 @@
 #!/usr/bin/env python
 
 import os
-import csv
+import json
 import os.path
 import shutil
 import tempfile
 from unittest import TestCase, main
 from xlsx_provider.operators.from_xlsx_query_operator import FromXLSXQueryOperator
 
-TEST_DATA = [
-    ['One', '2021-09-07 00:00:00', '0.1', '1', '10', '0.1'],
-    ['Two', '2011-09-08 00:00:00', '0.2', '0', '30', '0.2'],
-    ['à§æ', '2011-09-09 00:00:00', '0.3', '1', '60', '0.4'],
+TEST_DATA_JSON = [
+    {"high_tech_sector": "Pharmacy", "value": 78280, "share": 0.231952169555313},
+    {
+        "high_tech_sector": "Electronics-telecommunications",
+        "value": 75243,
+        "share": 0.222954583130376,
+    },
+    {
+        "high_tech_sector": "Scientific instruments",
+        "value": 64010,
+        "share": 0.189670433253542,
+    },
+    {"high_tech_sector": "Aerospace", "value": 44472, "share": 0.131776952366115},
+    {
+        "high_tech_sector": "Computers office machines",
+        "value": 21772,
+        "share": 0.0645136852766778,
+    },
+    {
+        "high_tech_sector": "Non-electrical machinery",
+        "value": 20813,
+        "share": 0.0616714981835167,
+    },
+    {"high_tech_sector": "Chemistry", "value": 19776, "share": 0.058598734453222},
+    {
+        "high_tech_sector": "Electrical machinery",
+        "value": 9730,
+        "share": 0.028831912195612,
+    },
+    {"high_tech_sector": "Armament", "value": 3384, "share": 0.0100300315856265},
 ]
 
 
@@ -25,13 +51,12 @@ class TestFromQuery(TestCase):
 
     def test_read_xlsx(self):
         source = os.path.join(self.root_dir, 'high_tech.xlsx')
-        target = os.path.join(self.target_dir, 'high_tech.xlsx.csv')
+        target = os.path.join(self.target_dir, 'high_tech.xlsx.json')
         so = FromXLSXQueryOperator(
             task_id='test',
             source=source,
             target=target,
-            # csv_delimiter='|',
-            file_format='jsonl',
+            file_format='json',
             table_name='test',
             worksheet='Figure 3',
             query='''
@@ -49,12 +74,8 @@ class TestFromQuery(TestCase):
         )
         so.execute({})
         with open(target, 'r') as f:
-            print(f.read())
-            print('-' * 100)
-            reader = csv.reader(f, delimiter='|')
-            for i, row in enumerate(reader):
-                if i >= 1:
-                    self.assertEqual(row, TEST_DATA[i - 1])
+            data = json.load(f)
+        self.assertEqual(data, TEST_DATA_JSON)
 
 
 if __name__ == '__main__':
