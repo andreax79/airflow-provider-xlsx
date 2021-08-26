@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import csv
+import json
 import sqlite3
 from airflow.utils.decorators import apply_defaults
 from airflow.exceptions import AirflowException
@@ -26,18 +27,18 @@ class FromXLSXQueryOperator(FromXLSXOperator):
     Execute an SQL query an XLSX/XLS file and export the result into a Parquet or CSV file
 
     This operators loads an XLSX or XLS file into an in-memory SQLite database,
-    executes a query on the db and stores the result into a Parquet or CSV file.
+    executes a query on the db and stores the result into a Parquet, CSV, JSON, JSON Lines(one line per record) file.
     The output columns names and types are determinated by the SQL query output.
 
     :param source: source filename (XLSX or XLS, templated)
     :type source: str
-    :param target: target filename (Parquet or CSV, templated)
+    :param target: target filename (templated)
     :type target: str
     :param worksheet: worksheet title or number (zero-based, templated)
     :type worksheet: str or int
     :param types: force column type (dict or list column='str', 'd', 'datetime64[ns]')
     :type types: str or dictionary of string key/value pair
-    :param file_format: output file format (parquet, csv)
+    :param file_format: output file format (parquet, csv, json, jsonl)
     :type file_format: str
     :param csv_delimiter: CSV delimiter (default: ',')
     :type csv_delimiter: str
@@ -106,19 +107,37 @@ class FromXLSXQueryOperator(FromXLSXOperator):
                 f, quoting=csv.QUOTE_MINIMAL, delimiter=self.csv_delimiter
             )
             if self.csv_header == HEADER_UPPER:
-                csw_writer.writerow(
-                    [x.upper() for x in result.columns.keys()]
-                )  # header
+                csw_writer.writerow([x.upper() for x in result.columns.keys()])
             elif self.csv_header == HEADER_LOWER:
-                csw_writer.writerow(
-                    [x.lower() for x in result.columns.keys()]
-                )  # header
+                csw_writer.writerow([x.lower() for x in result.columns.keys()])
             csw_writer.writerows(data)
+
+    def write_json(self, result):
+        "Write data to JSON file"
+        data = list(
+            dict(q)
+            for q in zip(*(list((k, x) for x in v) for k, v in result.columns.items()))
+        )
+        with open(self.target, 'w') as f:
+            f.write(json.dumps(data, indent=2))
+
+    def write_jsonl(self, result):
+        "Write data to JSON Lines file"
+        data = list(
+            dict(q)
+            for q in zip(*(list((k, x) for x in v) for k, v in result.columns.items()))
+        )
+        with open(self.target, 'w') as f:
+            f.write('\n'.join(json.dumps(x) for x in data))
 
     def write(self, result):
         "Write data to file"
         if self.file_format == FileFormat.csv:
             self.write_csv(result)
+        elif self.file_format == FileFormat.json:
+            self.write_json(result)
+        elif self.file_format == FileFormat.jsonl:
+            self.write_jsonl(result)
         else:
             self.write_parquet(result)
 

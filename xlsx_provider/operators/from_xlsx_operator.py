@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import csv
+import json
 import os
 import os.path
 import datetime
@@ -31,11 +32,11 @@ class FromXLSXOperator(BaseOperator):
     """
     Convert an XLSX/XLS file into Parquet or CSV file
 
-    Read an XLSX or XLS file and convert it into Parquet or CSV.
+    Read an XLSX or XLS file and convert it into Parquet, CSV, JSON, JSON Lines(one line per record) file.
 
     :param source: source filename (XLSX or XLS, templated)
     :type source: str
-    :param target: target filename (Parquet or CSV, templated)
+    :param target: target filename (templated)
     :type target: str
     :param worksheet: worksheet title or number (zero-based, templated)
     :type worksheet: str or int
@@ -49,7 +50,7 @@ class FromXLSXOperator(BaseOperator):
     :type columns_names: list of str
     :param limit: Row limit (default: None, templated)
     :type limit: int
-    :param file_format: target file format ('parquet' or 'csv')
+    :param file_format: output file format (parquet, csv, json, jsonl)
     :type file_format: str
     :param csv_delimiter: CSV delimiter (default: ',')
     :type csv_delimiter: str
@@ -108,9 +109,9 @@ class FromXLSXOperator(BaseOperator):
         if isinstance(worksheet, int):
             sheet = wb.sheets()[worksheet]
         else:  #  get by name
-            t = [x for x in wb.sheet_names() if x.lower() == worksheet.lower()][0]
+            t = [x for x in wb.sheet_names() if x.lower() == worksheet.lower()]
             if not t:
-                raise Exception('Worksheet ' + worksheet + ' not found')
+                raise KeyError('Worksheet {0} not found'.format(worksheet))
             sheet = t[0]
         # Prepare an XLSX sheet
         xsheet = Workbook().worksheets[0]
@@ -135,9 +136,9 @@ class FromXLSXOperator(BaseOperator):
         if isinstance(worksheet, int):
             sheet = wb.worksheets[worksheet]
         else:  #  get by name
-            t = [x for x in wb.worksheets if x.title.lower() == worksheet.lower()][0]
+            t = [x for x in wb.worksheets if x.title.lower() == worksheet.lower()]
             if not t:
-                raise Exception('Worksheet ' + worksheet + ' not found')
+                raise KeyError('Worksheet {0} not found'.format(worksheet))
             sheet = t[0]
         return sheet
 
@@ -238,15 +239,35 @@ class FromXLSXOperator(BaseOperator):
                 f, quoting=csv.QUOTE_MINIMAL, delimiter=self.csv_delimiter
             )
             if self.csv_header == HEADER_UPPER:
-                csw_writer.writerows([[x.upper() for x in datatypes.keys()]])  # header
+                csw_writer.writerows([[x.upper() for x in datatypes.keys()]])
             elif self.csv_header == HEADER_LOWER:
-                csw_writer.writerows([datatypes.keys()])  # header
+                csw_writer.writerows([datatypes.keys()])
             csw_writer.writerows(data)
+
+    def write_json(self, names, columns, datatypes):
+        "Write data to JSON file"
+        data = list(
+            dict(q) for q in zip(*(list((k, x) for x in v) for k, v in columns.items()))
+        )
+        with open(self.target, 'w') as f:
+            f.write(json.dumps(data, indent=2, default=str))
+
+    def write_jsonl(self, names, columns, datatypes):
+        "Write data to JSON Lines file"
+        data = list(
+            dict(q) for q in zip(*(list((k, x) for x in v) for k, v in columns.items()))
+        )
+        with open(self.target, 'w') as f:
+            f.write('\n'.join(json.dumps(x, default=str) for x in data))
 
     def write(self, names, columns, datatypes):
         "Write data to file"
         if self.file_format == FileFormat.csv:
             self.write_csv(names, columns, datatypes)
+        elif self.file_format == FileFormat.json:
+            self.write_json(names, columns, datatypes)
+        elif self.file_format == FileFormat.jsonl:
+            self.write_jsonl(names, columns, datatypes)
         else:
             self.write_parquet(names, columns, datatypes)
 

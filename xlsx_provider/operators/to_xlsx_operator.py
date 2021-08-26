@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import csv
+import json
 from openpyxl import Workbook
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
@@ -11,11 +12,13 @@ __all__ = ['ToXLSXOperator']
 
 class ToXLSXOperator(BaseOperator):
     """
-    Convert a Parquet or CSV file into XLSX or XLS
+    Convert Parquest, CSV, JSON, JSON Lines into XLSX
 
-    :param source: source filename (csv or parquet, detected by the extension, templated)
+    Read a Parquest, CSV, JSON, JSON Lines(one line per record) file and convert it into XLSX
+
+    :param source: source filename (type is detected by the extension, templated)
     :type source: str
-    :param target: target filename (xlsx, templated)
+    :param target: target filename (templated)
     :type target: str
     :param csv_delimiter: CSV delimiter (default: ',')
     :type csv_delimiter: str
@@ -34,18 +37,57 @@ class ToXLSXOperator(BaseOperator):
         self.csv_delimiter = csv_delimiter
 
     def execute(self, context):
-        wb = Workbook()
-        ws1 = wb.active
         if self.source.endswith('.parquet'):
-            import pandas as pd
-
-            f = pd.read_parquet(self.source)
-            for row in f.values:
-                ws1.append(list(row))
+            wb = self.read_parquet()
+        elif self.source.endswith('.json'):
+            wb = self.read_json()
+        elif self.source.endswith('.jsonl'):
+            wb = self.read_jsonl()
         else:
-            with open(self.source, 'r', encoding='utf8') as f:
-                reader = csv.reader(f, delimiter=self.csv_delimiter)
-                for row in reader:
-                    ws1.append(row)
+            wb = self.read_csv()
         wb.save(self.target)
         return True
+
+    def read_parquet(self):
+        import pandas as pd
+
+        wb = Workbook()
+        f = pd.read_parquet(self.source)
+        # header
+        wb.active.append(list(f.columns))
+        # rows
+        for row in f.values:
+            wb.active.append(list(row))
+        return wb
+
+    def read_csv(self):
+        wb = Workbook()
+        with open(self.source, 'r', encoding='utf8') as f:
+            reader = csv.reader(f, delimiter=self.csv_delimiter)
+            for row in reader:
+                wb.active.append(row)
+        return wb
+
+    def read_json(self):
+        wb = Workbook()
+        with open(self.source, 'r', encoding='utf8') as f:
+            data = json.load(f)
+            keys = list(data[0].keys())
+            # header
+            wb.active.append(keys)
+            # rows
+            for row in data:
+                wb.active.append([row.get(key) for key in keys])
+        return wb
+
+    def read_jsonl(self):
+        wb = Workbook()
+        with open(self.source, 'r', encoding='utf8') as f:
+            data = json.loads('[' + f.read().replace('\n', ',') + ']')
+            keys = list(data[0].keys())
+            # header
+            wb.active.append(keys)
+            # rows
+            for row in data:
+                wb.active.append([row.get(key) for key in keys])
+        return wb

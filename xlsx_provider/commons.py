@@ -107,9 +107,11 @@ def get_type(name, value):
 
 
 class FileFormat(Enum):
-    "File format enumerator (parquet/csv)"
+    "File format enumerator (parquet/csv/json/jsonl)"
     parquet = 'parquet'
     csv = 'csv'
+    json = 'json'
+    jsonl = 'jsonl'  # JSON lines (newline-delimited JSON)
 
     @classmethod
     def lookup(cls, file_format):

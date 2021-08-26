@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import pyarrow.parquet
 from unittest import TestCase, main
+from xlsx_provider.operators.to_xlsx_operator import ToXLSXOperator
 from xlsx_provider.operators.from_xlsx_operator import FromXLSXOperator
 
 TEST_DATA = [
@@ -44,7 +45,7 @@ TEST_DATA_JSON = [
 ]
 
 
-class TestFrom(TestCase):
+class TestTo(TestCase):
     def setUp(self):
         self.root_dir = os.path.dirname(os.path.realpath(__file__))
         self.target_dir = tempfile.mkdtemp()
@@ -52,85 +53,106 @@ class TestFrom(TestCase):
     def tearDown(self):
         shutil.rmtree(self.target_dir)
 
-    def test_xlsx_to_csv(self):
-        source = os.path.join(self.root_dir, 'test.xlsx')
-        target = os.path.join(self.target_dir, 'test.xlsx.csv')
-        so = FromXLSXOperator(
+    def test_csv_xlsx(self):
+        source = os.path.join(self.root_dir, 'test.xlsx.csv')
+        target = os.path.join(self.target_dir, 'test.xlsx')
+        target_check = os.path.join(self.target_dir, 'test.xlsx.csv')
+        so = ToXLSXOperator(
             task_id='test',
             source=source,
             target=target,
             csv_delimiter='|',
+        )
+        so.execute({})
+        so = FromXLSXOperator(
+            task_id='test',
+            source=target,
+            target=target_check,
+            limit=10,
+            csv_delimiter='|',
             file_format='csv',
         )
         so.execute({})
-        with open(target, 'r') as f:
+        with open(target_check, 'r') as f:
             reader = csv.reader(f, delimiter='|')
             for i, row in enumerate(reader):
                 if i > 1:
                     self.assertEqual(row, TEST_DATA[i - 1])
 
-    def test_xls_to_csv(self):
-        source = os.path.join(self.root_dir, 'test.xls')
-        target = os.path.join(self.target_dir, 'test.xls.csv')
-        so = FromXLSXOperator(
+    def test_parquet_xlsx(self):
+        source = os.path.join(self.root_dir, 'test.xls.parquet')
+        target = os.path.join(self.target_dir, 'test.xlsx')
+        target_check = os.path.join(self.target_dir, 'test.xlsx.csv')
+        so = ToXLSXOperator(
             task_id='test',
             source=source,
             target=target,
+        )
+        so.execute({})
+        so = FromXLSXOperator(
+            task_id='test',
+            source=target,
+            target=target_check,
             limit=10,
             csv_delimiter='|',
             file_format='csv',
         )
         so.execute({})
-        with open(target, 'r') as f:
+        with open(target_check, 'r') as f:
             reader = csv.reader(f, delimiter='|')
             for i, row in enumerate(reader):
-                if i >= 1:
+                if i > 1:
                     self.assertEqual(row, TEST_DATA[i - 1])
 
-    def test_xls_to_parquet(self):
-        source = os.path.join(self.root_dir, 'test.xls')
-        target = os.path.join(self.target_dir, 'test.xls.parquet')
-        so = FromXLSXOperator(
+    def test_json_xlsx(self):
+        source = os.path.join(self.root_dir, 'test.xls.json')
+        target = os.path.join(self.target_dir, 'test.xlsx')
+        target_check = os.path.join(self.target_dir, 'test.xlsx.csv')
+        so = ToXLSXOperator(
             task_id='test',
             source=source,
             target=target,
-            file_format='parquet',
         )
         so.execute({})
-        p = pyarrow.parquet.read_table(target).to_pandas()
-        self.assertEqual(len(p), 3)
-        self.assertTrue(all(p['col3number'] == [10, 20, 30]))
-        self.assertTrue(all(p['col4numformula'] == [10, 30, 60]))
-
-    def test_xls_to_json(self):
-        source = os.path.join(self.root_dir, 'test.xls')
-        target = os.path.join(self.target_dir, 'test.xls.json')
         so = FromXLSXOperator(
             task_id='test',
-            source=source,
-            target=target,
+            source=target,
+            target=target_check,
             limit=10,
-            file_format='json',
+            csv_delimiter='|',
+            file_format='csv',
         )
         so.execute({})
-        with open(target, 'r') as f:
-            data = json.load(f)
-            self.assertEqual(data, TEST_DATA_JSON)
+        with open(target_check, 'r') as f:
+            reader = csv.reader(f, delimiter='|')
+            for i, row in enumerate(reader):
+                if i > 1:
+                    self.assertEqual(row, TEST_DATA[i - 1])
 
-    def test_xls_to_jsonl(self):
-        source = os.path.join(self.root_dir, 'test.xls')
-        target = os.path.join(self.target_dir, 'test.xls.jsonl')
-        so = FromXLSXOperator(
+    def test_jsonl_xlsx(self):
+        source = os.path.join(self.root_dir, 'test.xls.jsonl')
+        target = os.path.join(self.target_dir, 'test.xlsx')
+        target_check = os.path.join(self.target_dir, 'test.xlsx.csv')
+        so = ToXLSXOperator(
             task_id='test',
             source=source,
             target=target,
-            limit=10,
-            file_format='jsonl',
         )
         so.execute({})
-        with open(target, 'r') as f:
-            data = json.loads('[' + f.read().replace('\n', ',') + ']')
-            self.assertEqual(data, TEST_DATA_JSON)
+        so = FromXLSXOperator(
+            task_id='test',
+            source=target,
+            target=target_check,
+            limit=10,
+            csv_delimiter='|',
+            file_format='csv',
+        )
+        so.execute({})
+        with open(target_check, 'r') as f:
+            reader = csv.reader(f, delimiter='|')
+            for i, row in enumerate(reader):
+                if i > 1:
+                    self.assertEqual(row, TEST_DATA[i - 1])
 
 
 if __name__ == '__main__':
