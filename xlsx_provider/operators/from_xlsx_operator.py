@@ -60,6 +60,7 @@ class FromXLSXOperator(BaseOperator):
 
     FileFormat = FileFormat
     template_fields = ('source', 'target', 'worksheet', 'limit')
+    ui_color = '#a934bd'
 
     @apply_defaults
     def __init__(

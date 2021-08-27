@@ -51,6 +51,7 @@ class FromXLSXQueryOperator(FromXLSXOperator):
 
     FileFormat = FileFormat
     template_fields = ('source', 'target', 'worksheet', 'query', 'table_name')
+    ui_color = '#a934bd'
 
     @apply_defaults
     def __init__(

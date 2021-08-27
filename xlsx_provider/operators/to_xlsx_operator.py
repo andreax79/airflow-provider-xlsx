@@ -26,6 +26,7 @@ class ToXLSXOperator(BaseOperator):
 
     FileFormat = FileFormat
     template_fields = ('source', 'target')
+    ui_color = '#a934bd'
 
     @apply_defaults
     def __init__(
