@@ -8,11 +8,13 @@ import unicodedata
 from enum import Enum
 
 __all__ = [
-    'rmdiacritics',
-    'clean_key',
-    'quoted',
-    'col_number_to_name',
+    'check_column_names',
+    'get_column_names',
     'get_type',
+    'clean_key',
+    'col_number_to_name',
+    'quoted',
+    'rmdiacritics',
     'FileFormat',
     'HEADER_LOWER',
     'HEADER_UPPER',
@@ -82,6 +84,7 @@ def col_number_to_name(col_number):
     Convert a column number to name (e.g. 0 -> '_index', 0 -> A, 1 -> B)
 
     :param col_number: column number
+    :type col_number: int
     """
 
     def _col_number_to_name(x):
@@ -99,11 +102,38 @@ def get_type(name, value):
     if isinstance(value, float) or isinstance(value, int):
         return 'd'  # double
     elif isinstance(value, datetime.datetime):
-        return 'datetime64[ns]'  # double
+        return 'datetime64[ns]'  # datetime
     elif isinstance(value, str):
         return 'str'
     else:
         raise Exception('unsupported data type {} {}'.format(name, type(value)))
+
+
+def get_column_names(sheet, skip_rows=0):
+    """
+    Extract the column names from the first row of the worksheet
+
+    :param sheet: worksheet
+    :type sheet: Worksheet
+    :param skip_rows: Number of input lines to skip
+    :type skip_rows: int
+    """
+    header = sheet[1 + skip_rows]
+    names = [clean_key(x.value) for x in header if x.value is not None]
+    # Append the column to the name if the name is not unique
+    return [
+        x
+        if (i == 0 or x not in names[:i])
+        else '{}_{}'.format(x, col_number_to_name(i + 1).lower())
+        for i, x in enumerate(names)
+    ]
+
+
+def check_column_names(column_names):
+    # Check unique columns
+    if len(set(column_names)) != len(column_names):
+        duplicates = list(set([x for x in column_names if column_names.count(x) > 1]))
+        raise Exception('Columns names are not unique: {0}'.format(duplicates))
 
 
 class FileFormat(Enum):

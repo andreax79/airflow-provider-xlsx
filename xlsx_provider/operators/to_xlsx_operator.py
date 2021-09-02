@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-import csv
-import json
 from openpyxl import Workbook
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
+from xlsx_provider.loader import load_worksheet
 from xlsx_provider.commons import FileFormat, DEFAULT_CSV_DELIMITER
 
 __all__ = ['ToXLSXOperator']
@@ -22,73 +21,49 @@ class ToXLSXOperator(BaseOperator):
     :type target: str
     :param csv_delimiter: CSV delimiter (default: ',')
     :type csv_delimiter: str
+    :param skip_rows: Number of input lines to skip (default: 0, templated)
+    :type skip_rows: int
     """
 
     FileFormat = FileFormat
-    template_fields = ('source', 'target')
+    template_fields = ('source', 'target', 'skip_rows')
     ui_color = '#a934bd'
 
     @apply_defaults
     def __init__(
-        self, source, target, csv_delimiter=DEFAULT_CSV_DELIMITER, *args, **kwargs
+        self,
+        source,
+        target,
+        worksheet=0,
+        skip_rows=0,
+        csv_delimiter=DEFAULT_CSV_DELIMITER,
+        *args,
+        **kwargs
     ):
         super(ToXLSXOperator, self).__init__(*args, **kwargs)
         self.source = source
         self.target = target
+        try:
+            self.worksheet = int(worksheet)
+        except:
+            self.worksheet = worksheet
+        self.skip_rows = skip_rows
         self.csv_delimiter = csv_delimiter
 
+    def load_worksheet(self):
+        # Load a worksheet
+        return load_worksheet(
+            filename=self.source,
+            worksheet=self.worksheet,
+            skip_rows=self.skip_rows,
+            csv_delimiter=self.csv_delimiter,
+        )
+
     def execute(self, context):
-        if self.source.endswith('.parquet'):
-            wb = self.read_parquet()
-        elif self.source.endswith('.json'):
-            wb = self.read_json()
-        elif self.source.endswith('.jsonl'):
-            wb = self.read_jsonl()
-        else:
-            wb = self.read_csv()
+        sheet = self.load_worksheet()
+        # Create a new workbook and append the loaded sheet
+        wb = Workbook()
+        wb.worksheets.clear()
+        wb.worksheets.append(sheet)
         wb.save(self.target)
         return True
-
-    def read_parquet(self):
-        import pandas as pd
-
-        wb = Workbook()
-        f = pd.read_parquet(self.source)
-        # header
-        wb.active.append(list(f.columns))
-        # rows
-        for row in f.values:
-            wb.active.append(list(row))
-        return wb
-
-    def read_csv(self):
-        wb = Workbook()
-        with open(self.source, 'r', encoding='utf8') as f:
-            reader = csv.reader(f, delimiter=self.csv_delimiter)
-            for row in reader:
-                wb.active.append(row)
-        return wb
-
-    def read_json(self):
-        wb = Workbook()
-        with open(self.source, 'r', encoding='utf8') as f:
-            data = json.load(f)
-            keys = list(data[0].keys())
-            # header
-            wb.active.append(keys)
-            # rows
-            for row in data:
-                wb.active.append([row.get(key) for key in keys])
-        return wb
-
-    def read_jsonl(self):
-        wb = Workbook()
-        with open(self.source, 'r', encoding='utf8') as f:
-            data = json.loads('[' + f.read().replace('\n', ',') + ']')
-            keys = list(data[0].keys())
-            # header
-            wb.active.append(keys)
-            # rows
-            for row in data:
-                wb.active.append([row.get(key) for key in keys])
-        return wb

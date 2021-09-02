@@ -87,6 +87,20 @@ class TestFrom(TestCase):
                 if i >= 1:
                     self.assertEqual(row, TEST_DATA[i - 1])
 
+        # target2 = os.path.join(self.root_dir, 'test1.xls.json')
+        # so = FromXLSXOperator(
+        #     task_id='test',
+        #     source=target,
+        #     target=target2,
+        #     csv_delimiter='|',
+        #     types={ 'col3number': 'd', 'col4boolean': 'd', 'col4numformula': 'd' },
+        #     file_format='json',
+        # )
+        # so.execute({})
+        # with open(target2, 'r') as f:
+        #     data = json.load(f)
+        #     self.assertEqual(data, TEST_DATA_JSON)
+
     def test_xls_to_parquet(self):
         source = os.path.join(self.root_dir, 'test.xls')
         target = os.path.join(self.target_dir, 'test.xls.parquet')
@@ -101,6 +115,18 @@ class TestFrom(TestCase):
         self.assertEqual(len(p), 3)
         self.assertTrue(all(p['col3number'] == [10, 20, 30]))
         self.assertTrue(all(p['col4numformula'] == [10, 30, 60]))
+
+        target2 = os.path.join(self.target_dir, 'test.xls.json')
+        so = FromXLSXOperator(
+            task_id='test',
+            source=target,
+            target=target2,
+            file_format='json',
+        )
+        so.execute({})
+        with open(target2, 'r') as f:
+            data = json.load(f)
+            self.assertEqual(data, TEST_DATA_JSON)
 
     def test_xls_to_json(self):
         source = os.path.join(self.root_dir, 'test.xls')
@@ -130,6 +156,18 @@ class TestFrom(TestCase):
         so.execute({})
         with open(target, 'r') as f:
             data = json.loads('[' + f.read().replace('\n', ',') + ']')
+            self.assertEqual(data, TEST_DATA_JSON)
+
+        target2 = os.path.join(self.target_dir, 'test.xls.json')
+        so = FromXLSXOperator(
+            task_id='test',
+            source=target,
+            target=target2,
+            file_format='json',
+        )
+        so.execute({})
+        with open(target2, 'r') as f:
+            data = json.load(f)
             self.assertEqual(data, TEST_DATA_JSON)
 
 

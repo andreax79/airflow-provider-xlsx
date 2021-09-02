@@ -87,4 +87,11 @@ with DAG(
     )
 
     # Defining the task dependencies
-    start >> fetch_catalog_from_sftp >> catalog_xlsx_to_parquet >> copy_to_s3 >> add_datalake_partition >> end
+    (
+        start
+        >> fetch_catalog_from_sftp
+        >> catalog_xlsx_to_parquet
+        >> copy_to_s3
+        >> add_datalake_partition
+        >> end
+    )

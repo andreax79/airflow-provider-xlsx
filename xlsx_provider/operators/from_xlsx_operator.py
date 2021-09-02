@@ -1,19 +1,16 @@
 #!/usr/bin/env python
 
-import csv
 import json
-import os
-import os.path
 import datetime
 import dateutil.parser
-from openpyxl import load_workbook, Workbook
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
+from xlsx_provider.loader import load_worksheet
 from xlsx_provider.commons import (
-    clean_key,
+    check_column_names,
     get_type,
-    col_number_to_name,
+    get_column_names,
     FileFormat,
     DEFAULT_CSV_DELIMITER,
     DEFAULT_CSV_HEADER,
@@ -21,7 +18,6 @@ from xlsx_provider.commons import (
     INDEX_COLUMN_NAME,
     HEADER_UPPER,
     HEADER_LOWER,
-    XLS_EPOC,
     XLSX_EPOC,
 )
 
@@ -34,32 +30,34 @@ class FromXLSXOperator(BaseOperator):
 
     Read an XLSX or XLS file and convert it into Parquet, CSV, JSON, JSON Lines(one line per record) file.
 
-    :param source: source filename (XLSX or XLS, templated)
+    :param source: Source filename (XLSX or XLS, templated)
     :type source: str
-    :param target: target filename (templated)
+    :param target: Target filename (templated)
     :type target: str
-    :param worksheet: worksheet title or number (zero-based, templated)
+    :param worksheet: Worksheet title or number (zero-based, templated)
     :type worksheet: str or int
-    :param drop_columns: list of columns to be dropped
-    :type drop_columns: list of str
-    :param add_columns: columns to be added (dict or list column=value)
-    :type add_columns: list of str or dictionary of string key/value pair
-    :param types: force columns types (dict or list column='str', 'd', 'datetime64[ns]')
-    :type types: str or dictionary of string key/value pair
-    :param columns_names: force columns names (list)
-    :type columns_names: list of str
+    :param skip_rows: Number of input lines to skip (default: 0, templated)
+    :type skip_rows: int
     :param limit: Row limit (default: None, templated)
     :type limit: int
-    :param file_format: output file format (parquet, csv, json, jsonl)
+    :param drop_columns: List of columns to be dropped
+    :type drop_columns: list of str
+    :param add_columns: Columns to be added (dict or list column=value)
+    :type add_columns: list of str or dictionary of string key/value pair
+    :param types: force Parquet column types (dict or list column='str', 'd', 'datetime64[ns]')
+    :type types: str or dictionary of string key/value pair
+    :param column_names: force columns names (list)
+    :type column_names: list of str
+    :param file_format: Output file format (parquet, csv, json, jsonl)
     :type file_format: str
     :param csv_delimiter: CSV delimiter (default: ',')
     :type csv_delimiter: str
-    :param csv_header: convert CSV header case ('lower', 'upper', 'skip')
+    :param csv_header: Convert CSV output header case ('lower', 'upper', 'skip')
     :type csv_header: str
     """
 
     FileFormat = FileFormat
-    template_fields = ('source', 'target', 'worksheet', 'limit')
+    template_fields = ('source', 'target', 'worksheet', 'limit', 'skip_rows')
     ui_color = '#a934bd'
 
     @apply_defaults
@@ -68,11 +66,12 @@ class FromXLSXOperator(BaseOperator):
         source,
         target,
         worksheet=0,
+        skip_rows=0,
+        limit=None,
         drop_columns=None,
         add_columns=None,
         types=None,
-        columns_names=None,
-        limit=None,
+        column_names=None,
         file_format=DEFAULT_FORMAT,
         csv_delimiter=DEFAULT_CSV_DELIMITER,
         csv_header=DEFAULT_CSV_HEADER,
@@ -86,6 +85,8 @@ class FromXLSXOperator(BaseOperator):
             self.worksheet = int(worksheet)
         except:
             self.worksheet = worksheet
+        self.skip_rows = skip_rows
+        self.limit = limit
         self.drop_columns = drop_columns or []
         if isinstance(add_columns, list):
             self.add_columns = dict(x.split('=') for x in add_columns)
@@ -95,82 +96,30 @@ class FromXLSXOperator(BaseOperator):
             self.types = dict(x.split('=') for x in types)
         else:
             self.types = types or {}
-        self.names = columns_names
+        self.names = column_names
         self.file_format = FileFormat.lookup(file_format)
-        self.limit = limit
         self.csv_delimiter = csv_delimiter
         self.csv_header = csv_header
 
-    @classmethod
-    def load_worksheet_xls(cls, filename, worksheet):
-        # Load a worksheet from an XLS file
-        import xlrd
-
-        wb = xlrd.open_workbook(filename)
-        if isinstance(worksheet, int):
-            sheet = wb.sheets()[worksheet]
-        else:  #  get by name
-            t = [x for x in wb.sheet_names() if x.lower() == worksheet.lower()]
-            if not t:
-                raise KeyError('Worksheet {0} not found'.format(worksheet))
-            sheet = t[0]
-        # Prepare an XLSX sheet
-        xsheet = Workbook().worksheets[0]
-        for row in range(0, sheet.nrows):
-            for col in range(0, sheet.ncols):
-                value = sheet.cell_value(row, col)
-                cell_type = sheet.cell_type(row, col)
-                if cell_type == xlrd.XL_CELL_DATE:
-                    value = XLS_EPOC + datetime.timedelta(days=value)
-                elif cell_type == xlrd.XL_CELL_NUMBER:
-                    if isinstance(value, float) and value.is_integer():
-                        value = int(value)
-                    # print(value, type(value), sheet.cell_type(row, col))
-                xsheet.cell(row=row + 1, column=col + 1).value = value
-        assert xsheet.max_row == sheet.nrows
-        return xsheet
-
-    @classmethod
-    def load_worksheet_xlsx(cls, filename, worksheet):
-        # Load a worksheet from an XLSX file
-        wb = load_workbook(filename=filename, data_only=True)
-        if isinstance(worksheet, int):
-            sheet = wb.worksheets[worksheet]
-        else:  #  get by name
-            t = [x for x in wb.worksheets if x.title.lower() == worksheet.lower()]
-            if not t:
-                raise KeyError('Worksheet {0} not found'.format(worksheet))
-            sheet = t[0]
-        return sheet
-
-    @classmethod
-    def load_worksheet(cls, filename, worksheet):
-        # Load a worksheet from an XLSX or XLS file
-        ext = os.path.splitext(filename)[1].lower()
-        if ext in ['.xls', '.xlt']:  #  Old format
-            return cls.load_worksheet_xls(filename, worksheet)
-        else:  #  XLS format
-            return cls.load_worksheet_xlsx(filename, worksheet)
+    def load_worksheet(self):
+        # Load a worksheet
+        return load_worksheet(
+            filename=self.source,
+            worksheet=self.worksheet,
+            skip_rows=self.skip_rows,
+            csv_delimiter=self.csv_delimiter,
+        )
 
     def execute(self, context):
         try:
-            sheet = self.load_worksheet(filename=self.source, worksheet=self.worksheet)
+            sheet = self.load_worksheet()
             rows = list(sheet)
             if self.names is not None:
                 names = self.names
             else:
-                names = [clean_key(x.value) for x in rows[0] if x.value is not None]
-                # Append the column to the name if the name is not unique
-                names = [
-                    x
-                    if (i == 0 or x not in names[: i - 1])
-                    else '{}_{}'.format(x, col_number_to_name(i).lower())
-                    for i, x in enumerate(names)
-                ]
+                names = get_column_names(sheet, skip_rows=self.skip_rows)
             # Check unique columns
-            if len(set(names)) != len(names):
-                duplicates = list(set([x for x in names if names.count(x) > 1]))
-                raise Exception('Columns names are not unique: {0}'.format(duplicates))
+            check_column_names(names)
             datatypes = dict([(name, self.types.get(name)) for name in names])
             if INDEX_COLUMN_NAME in datatypes:
                 datatypes[INDEX_COLUMN_NAME] = 'd'
@@ -214,17 +163,21 @@ class FromXLSXOperator(BaseOperator):
             raise AirflowException("XLSXToParquet operator error: {0}".format(str(e)))
         return True
 
-    def write_parquet(self, names, columns, datatypes):
-        "Write the results in parquet format"
+    def to_dataframe(self, names, columns, datatypes):
         import pandas as pd
-        import pyarrow.parquet
 
         all_names = names + [x for x in self.add_columns.keys() if x not in names]
         pd_data = {}
         for name in all_names:
             if name not in self.drop_columns:
                 pd_data[name] = pd.Series(columns[name], dtype=datatypes[name])
-        df = pd.DataFrame(pd_data)
+        return pd.DataFrame(pd_data)
+
+    def write_parquet(self, names, columns, datatypes):
+        "Write the results in parquet format"
+        import pyarrow.parquet
+
+        df = self.to_dataframe(names, columns, datatypes)
         pyarrow.parquet.write_table(
             table=pyarrow.Table.from_pandas(df),
             where=self.target,
@@ -234,16 +187,24 @@ class FromXLSXOperator(BaseOperator):
 
     def write_csv(self, names, columns, datatypes):
         "Write data to CSV file"
-        data = zip(*[columns[k] for k in datatypes])
         with open(self.target, 'w') as f:
-            csw_writer = csv.writer(
-                f, quoting=csv.QUOTE_MINIMAL, delimiter=self.csv_delimiter
-            )
+            # header
             if self.csv_header == HEADER_UPPER:
-                csw_writer.writerows([[x.upper() for x in datatypes.keys()]])
+                f.write(self.csv_delimiter.join([x.upper() for x in datatypes.keys()]))
+                f.write('\n')
             elif self.csv_header == HEADER_LOWER:
-                csw_writer.writerows([datatypes.keys()])
-            csw_writer.writerows(data)
+                f.write(self.csv_delimiter.join(datatypes.keys()))
+                f.write('\n')
+            # data
+            df = self.to_dataframe(names, columns, datatypes)
+            df.to_csv(
+                path_or_buf=f,
+                sep=self.csv_delimiter,
+                header=False,
+                index=False,
+                date_format='%Y-%m-%d %M:%M:%S',
+                float_format='%g'
+            )
 
     def write_json(self, names, columns, datatypes):
         "Write data to JSON file"

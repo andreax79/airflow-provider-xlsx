@@ -6,10 +6,13 @@ import sqlite3
 from airflow.utils.decorators import apply_defaults
 from airflow.exceptions import AirflowException
 from xlsx_provider.commons import (
+    check_column_names,
+    col_number_to_name,
+    get_column_names,
     get_type,
     quoted,
-    col_number_to_name,
     FileFormat,
+    INDEX_COLUMN_NAME,
     DEFAULT_CSV_DELIMITER,
     DEFAULT_CSV_HEADER,
     DEFAULT_FORMAT,
@@ -30,27 +33,38 @@ class FromXLSXQueryOperator(FromXLSXOperator):
     executes a query on the db and stores the result into a Parquet, CSV, JSON, JSON Lines(one line per record) file.
     The output columns names and types are determinated by the SQL query output.
 
-    :param source: source filename (XLSX or XLS, templated)
+    :param source: Source filename (XLSX or XLS, templated)
     :type source: str
-    :param target: target filename (templated)
+    :param target: Target filename (templated)
     :type target: str
-    :param worksheet: worksheet title or number (zero-based, templated)
+    :param worksheet: Worksheet title or number (zero-based, templated)
     :type worksheet: str or int
-    :param types: force column type (dict or list column='str', 'd', 'datetime64[ns]')
+    :param skip_rows: Number of input lines to skip (default: 0, templated)
+    :type skip_rows: int
+    :param types: force Parquet column types (dict or list column='str', 'd', 'datetime64[ns]')
     :type types: str or dictionary of string key/value pair
-    :param file_format: output file format (parquet, csv, json, jsonl)
+    :param file_format: Output file format (parquet, csv, json, jsonl)
     :type file_format: str
     :param csv_delimiter: CSV delimiter (default: ',')
     :type csv_delimiter: str
-    :param csv_header: convert CSV header case ('lower', 'upper', 'skip')
+    :param csv_header: Convert CSV output header case ('lower', 'upper', 'skip')
     :type csv_header: str
     :param query: SQL query (templated)
     :type query: str
     :param table_name: Table name (default: 'xls', templated)
+    :param use_first_row_as_header: if true, use the first row as column names otherwhise use A, B, C, ... as colum names
+    :type use_first_row_as_header: bool
     """
 
     FileFormat = FileFormat
-    template_fields = ('source', 'target', 'worksheet', 'query', 'table_name')
+    template_fields = (
+        'source',
+        'target',
+        'worksheet',
+        'query',
+        'table_name',
+        'skip_rows',
+    )
     ui_color = '#a934bd'
 
     @apply_defaults
@@ -59,12 +73,14 @@ class FromXLSXQueryOperator(FromXLSXOperator):
         source,
         target,
         worksheet=0,
+        skip_rows=0,
         types=None,
         file_format=DEFAULT_FORMAT,
         csv_delimiter=DEFAULT_CSV_DELIMITER,
         csv_header=DEFAULT_CSV_HEADER,
         query=None,
         table_name=DEFAULT_TABLE_NAME,
+        use_first_row_as_header=False,
         *args,
         **kwargs
     ):
@@ -74,6 +90,7 @@ class FromXLSXQueryOperator(FromXLSXOperator):
             source=source,
             target=target,
             worksheet=worksheet,
+            skip_rows=skip_rows,
             types=types,
             file_format=file_format,
             csv_delimiter=csv_delimiter,
@@ -81,6 +98,7 @@ class FromXLSXQueryOperator(FromXLSXOperator):
         )
         self.query = query
         self.table_name = table_name
+        self.use_first_row_as_header = use_first_row_as_header
 
     def write_parquet(self, result):
         "Write the results in parquet format"
@@ -144,8 +162,15 @@ class FromXLSXQueryOperator(FromXLSXOperator):
 
     def execute(self, context):
         try:
-            sheet = self.load_worksheet(filename=self.source, worksheet=self.worksheet)
-            result = Result(self.table_name, sheet, self.types)
+            sheet = self.load_worksheet()
+            if self.use_first_row_as_header:
+                # Extract the column names from the first row of the spreadsheet
+                column_names = get_column_names(sheet, skip_rows=self.skip_rows)
+                # Check unique columns
+                check_column_names(column_names)
+            else:
+                column_names = None
+            result = Result(self.table_name, sheet, self.types, column_names)
             result.process(self.query)
             self.write(result)
         except Exception as e:
@@ -154,13 +179,14 @@ class FromXLSXQueryOperator(FromXLSXOperator):
 
 
 class Result(object):
-    def __init__(self, table_name, sheet, types):
+    def __init__(self, table_name, sheet, types, column_names=None):
         self.table_name = table_name
         self.sheet = sheet
         self.types = types
+        self.column_names = column_names
 
     def process_row(self, row):
-        for i, name in enumerate(self.columns_names):
+        for i, name in enumerate(self.column_names):
             value = row[i]
             if isinstance(value, str):
                 value = value.strip()
@@ -171,12 +197,19 @@ class Result(object):
     def process(self, query=None):
         detect_types = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
         with sqlite3.connect(':memory:', detect_types=detect_types) as conn:
-            sql_columns = ','.join(
-                (
-                    quoted(col_number_to_name(x))
-                    for x in range(0, self.sheet.max_column + 1)
+            if self.column_names is not None:
+                sql_columns = ','.join(
+                    [quoted(x) for x in [INDEX_COLUMN_NAME] + self.column_names]
                 )
-            )
+                skip_rows = 1
+            else:
+                sql_columns = ','.join(
+                    (
+                        quoted(col_number_to_name(x))
+                        for x in range(0, self.sheet.max_column + 1)
+                    )
+                )
+                skip_rows = 0
             # Create table
             create_table_sql = 'create table {table}({columns})'.format(
                 table=self.table_name, columns=sql_columns
@@ -190,16 +223,20 @@ class Result(object):
             )
             conn.executemany(
                 insert_sql,
-                ((x[0],) + x[1] for x in enumerate(self.sheet.values, start=1)),
+                (
+                    (i,) + x
+                    for i, x in enumerate(self.sheet.values, start=1)
+                    if i >= 1 + skip_rows
+                ),
             )
             # Query
             result = conn.execute(query)
             # Process result
-            self.columns_names = list(x[0].lower() for x in result.description)
+            self.column_names = list(x[0].lower() for x in result.description)
             self.datatypes = dict(
-                [(name, self.types.get(name)) for name in self.columns_names]
+                [(name, self.types.get(name)) for name in self.column_names]
             )
-            self.columns = dict([(name, []) for name in self.columns_names])
+            self.columns = dict([(name, []) for name in self.column_names])
             for row in result:
                 self.process_row(row)
             result.close()
