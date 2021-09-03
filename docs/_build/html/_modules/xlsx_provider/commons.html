@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>xlsx_provider.commons &#8212; airflow-provider-xlsx 0.0.4 documentation</title>
+    <title>xlsx_provider.commons &#8212; airflow-provider-xlsx 0.0.6 documentation</title>
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     
@@ -26,7 +26,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.4 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.6 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.commons</a></li> 
       </ul>
@@ -48,11 +48,13 @@
 <span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s1">&#39;rmdiacritics&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;clean_key&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;quoted&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;col_number_to_name&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;check_column_names&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;get_column_names&#39;</span><span class="p">,</span>
     <span class="s1">&#39;get_type&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;clean_key&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;col_number_to_name&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;quoted&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;rmdiacritics&#39;</span><span class="p">,</span>
     <span class="s1">&#39;FileFormat&#39;</span><span class="p">,</span>
     <span class="s1">&#39;HEADER_LOWER&#39;</span><span class="p">,</span>
     <span class="s1">&#39;HEADER_UPPER&#39;</span><span class="p">,</span>
@@ -122,6 +124,7 @@
 <span class="sd">    Convert a column number to name (e.g. 0 -&gt; &#39;_index&#39;, 0 -&gt; A, 1 -&gt; B)</span>
 
 <span class="sd">    :param col_number: column number</span>
+<span class="sd">    :type col_number: int</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">_col_number_to_name</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
@@ -139,17 +142,46 @@
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;d&#39;</span>  <span class="c1"># double</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s1">&#39;datetime64[ns]&#39;</span>  <span class="c1"># double</span>
+        <span class="k">return</span> <span class="s1">&#39;datetime64[ns]&#39;</span>  <span class="c1"># datetime</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;str&#39;</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;unsupported data type </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
 
 
+<div class="viewcode-block" id="get_column_names"><a class="viewcode-back" href="../../index.html#xlsx_provider.operators.from_xlsx_operator.get_column_names">[docs]</a><span class="k">def</span> <span class="nf">get_column_names</span><span class="p">(</span><span class="n">sheet</span><span class="p">,</span> <span class="n">skip_rows</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extract the column names from the first row of the worksheet</span>
+
+<span class="sd">    :param sheet: worksheet</span>
+<span class="sd">    :type sheet: Worksheet</span>
+<span class="sd">    :param skip_rows: Number of input lines to skip</span>
+<span class="sd">    :type skip_rows: int</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">sheet</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">skip_rows</span><span class="p">]</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">clean_key</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">header</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="c1"># Append the column to the name if the name is not unique</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">x</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">names</span><span class="p">[:</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">else</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">col_number_to_name</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+    <span class="p">]</span></div>
+
+
+<span class="k">def</span> <span class="nf">check_column_names</span><span class="p">(</span><span class="n">column_names</span><span class="p">):</span>
+    <span class="c1"># Check unique columns</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">column_names</span><span class="p">))</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">column_names</span><span class="p">):</span>
+        <span class="n">duplicates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">column_names</span> <span class="k">if</span> <span class="n">column_names</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]))</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Columns names are not unique: </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">duplicates</span><span class="p">))</span>
+
+
 <div class="viewcode-block" id="FileFormat"><a class="viewcode-back" href="../../index.html#xlsx_provider.operators.from_xlsx_operator.FileFormat">[docs]</a><span class="k">class</span> <span class="nc">FileFormat</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
-    <span class="s2">&quot;File format enumerator (parquet/csv)&quot;</span>
+    <span class="s2">&quot;File format enumerator (parquet/csv/json/jsonl)&quot;</span>
     <span class="n">parquet</span> <span class="o">=</span> <span class="s1">&#39;parquet&#39;</span>
     <span class="n">csv</span> <span class="o">=</span> <span class="s1">&#39;csv&#39;</span>
+    <span class="n">json</span> <span class="o">=</span> <span class="s1">&#39;json&#39;</span>
+    <span class="n">jsonl</span> <span class="o">=</span> <span class="s1">&#39;jsonl&#39;</span>  <span class="c1"># JSON lines (newline-delimited JSON)</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">lookup</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">file_format</span><span class="p">):</span>
@@ -190,7 +222,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.4 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.6 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.commons</a></li> 
       </ul>

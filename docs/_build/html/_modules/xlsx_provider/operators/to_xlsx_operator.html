@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>xlsx_provider.operators.to_xlsx_operator &#8212; airflow-provider-xlsx 0.0.4 documentation</title>
+    <title>xlsx_provider.operators.to_xlsx_operator &#8212; airflow-provider-xlsx 0.0.6 documentation</title>
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     
@@ -26,7 +26,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 0.0.4 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 0.0.6 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.operators.to_xlsx_operator</a></li> 
       </ul>
@@ -40,10 +40,10 @@
   <h1>Source code for xlsx_provider.operators.to_xlsx_operator</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python</span>
 
-<span class="kn">import</span> <span class="nn">csv</span>
 <span class="kn">from</span> <span class="nn">openpyxl</span> <span class="kn">import</span> <span class="n">Workbook</span>
 <span class="kn">from</span> <span class="nn">airflow.models</span> <span class="kn">import</span> <span class="n">BaseOperator</span>
 <span class="kn">from</span> <span class="nn">airflow.utils.decorators</span> <span class="kn">import</span> <span class="n">apply_defaults</span>
+<span class="kn">from</span> <span class="nn">xlsx_provider.loader</span> <span class="kn">import</span> <span class="n">load_worksheet</span>
 <span class="kn">from</span> <span class="nn">xlsx_provider.commons</span> <span class="kn">import</span> <span class="n">FileFormat</span><span class="p">,</span> <span class="n">DEFAULT_CSV_DELIMITER</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ToXLSXOperator&#39;</span><span class="p">]</span>
@@ -51,42 +51,60 @@
 
 <div class="viewcode-block" id="ToXLSXOperator"><a class="viewcode-back" href="../../../index.html#xlsx_provider.operators.to_xlsx_operator.ToXLSXOperator">[docs]</a><span class="k">class</span> <span class="nc">ToXLSXOperator</span><span class="p">(</span><span class="n">BaseOperator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Convert a Parquet or CSV file into XLSX or XLS</span>
+<span class="sd">    Convert Parquest, CSV, JSON, JSON Lines into XLSX</span>
 
-<span class="sd">    :param source: source filename (csv or parquet, detected by the extension, templated)</span>
+<span class="sd">    Read a Parquest, CSV, JSON, JSON Lines(one line per record) file and convert it into XLSX</span>
+
+<span class="sd">    :param source: source filename (type is detected by the extension, templated)</span>
 <span class="sd">    :type source: str</span>
-<span class="sd">    :param target: target filename (xlsx, templated)</span>
+<span class="sd">    :param target: target filename (templated)</span>
 <span class="sd">    :type target: str</span>
 <span class="sd">    :param csv_delimiter: CSV delimiter (default: &#39;,&#39;)</span>
 <span class="sd">    :type csv_delimiter: str</span>
+<span class="sd">    :param skip_rows: Number of input lines to skip (default: 0, templated)</span>
+<span class="sd">    :type skip_rows: int</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">FileFormat</span> <span class="o">=</span> <span class="n">FileFormat</span>
-    <span class="n">template_fields</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">,</span> <span class="s1">&#39;target&#39;</span><span class="p">)</span>
+    <span class="n">template_fields</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">,</span> <span class="s1">&#39;target&#39;</span><span class="p">,</span> <span class="s1">&#39;skip_rows&#39;</span><span class="p">)</span>
+    <span class="n">ui_color</span> <span class="o">=</span> <span class="s1">&#39;#a934bd&#39;</span>
 
     <span class="nd">@apply_defaults</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">csv_delimiter</span><span class="o">=</span><span class="n">DEFAULT_CSV_DELIMITER</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">source</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">,</span>
+        <span class="n">worksheet</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">skip_rows</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">csv_delimiter</span><span class="o">=</span><span class="n">DEFAULT_CSV_DELIMITER</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">ToXLSXOperator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">=</span> <span class="n">source</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">worksheet</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">worksheet</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">worksheet</span> <span class="o">=</span> <span class="n">worksheet</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_rows</span> <span class="o">=</span> <span class="n">skip_rows</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">csv_delimiter</span> <span class="o">=</span> <span class="n">csv_delimiter</span>
 
-<div class="viewcode-block" id="ToXLSXOperator.execute"><a class="viewcode-back" href="../../../index.html#xlsx_provider.operators.to_xlsx_operator.ToXLSXOperator.execute">[docs]</a>    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
-        <span class="n">wb</span> <span class="o">=</span> <span class="n">Workbook</span><span class="p">()</span>
-        <span class="n">ws1</span> <span class="o">=</span> <span class="n">wb</span><span class="o">.</span><span class="n">active</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.parquet&#39;</span><span class="p">):</span>
-            <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+    <span class="k">def</span> <span class="nf">load_worksheet</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Load a worksheet</span>
+        <span class="k">return</span> <span class="n">load_worksheet</span><span class="p">(</span>
+            <span class="n">filename</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">,</span>
+            <span class="n">worksheet</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">worksheet</span><span class="p">,</span>
+            <span class="n">skip_rows</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_rows</span><span class="p">,</span>
+            <span class="n">csv_delimiter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">csv_delimiter</span><span class="p">,</span>
+        <span class="p">)</span>
 
-            <span class="n">f</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
-                <span class="n">ws1</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-                <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">csv_delimiter</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">reader</span><span class="p">:</span>
-                    <span class="n">ws1</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+<div class="viewcode-block" id="ToXLSXOperator.execute"><a class="viewcode-back" href="../../../index.html#xlsx_provider.operators.to_xlsx_operator.ToXLSXOperator.execute">[docs]</a>    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+        <span class="n">sheet</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_worksheet</span><span class="p">()</span>
+        <span class="c1"># Create a new workbook and append the loaded sheet</span>
+        <span class="n">wb</span> <span class="o">=</span> <span class="n">Workbook</span><span class="p">()</span>
+        <span class="n">wb</span><span class="o">.</span><span class="n">worksheets</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">wb</span><span class="o">.</span><span class="n">worksheets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sheet</span><span class="p">)</span>
         <span class="n">wb</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span></div></div>
 </pre></div>
@@ -120,7 +138,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 0.0.4 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 0.0.6 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.operators.to_xlsx_operator</a></li> 
       </ul>
