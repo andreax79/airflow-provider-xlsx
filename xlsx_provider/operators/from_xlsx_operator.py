@@ -101,10 +101,11 @@ class FromXLSXOperator(BaseOperator):
         self.csv_delimiter = csv_delimiter
         self.csv_header = csv_header
 
-    def load_worksheet(self):
+    def load_worksheet(self, sheet=None):
         # Load a worksheet
         return load_worksheet(
             filename=self.source,
+            sheet=sheet,
             worksheet=self.worksheet,
             skip_rows=self.skip_rows,
             csv_delimiter=self.csv_delimiter,
@@ -203,7 +204,7 @@ class FromXLSXOperator(BaseOperator):
                 header=False,
                 index=False,
                 date_format='%Y-%m-%d %M:%M:%S',
-                float_format='%g'
+                float_format='%g',
             )
 
     def write_json(self, names, columns, datatypes):
