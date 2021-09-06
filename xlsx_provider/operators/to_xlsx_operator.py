@@ -50,20 +50,22 @@ class ToXLSXOperator(BaseOperator):
         self.skip_rows = skip_rows
         self.csv_delimiter = csv_delimiter
 
-    def load_worksheet(self):
+    def load_worksheet(self, sheet=None):
         # Load a worksheet
         return load_worksheet(
             filename=self.source,
+            sheet=sheet,
             worksheet=self.worksheet,
             skip_rows=self.skip_rows,
             csv_delimiter=self.csv_delimiter,
         )
 
     def execute(self, context):
-        sheet = self.load_worksheet()
-        # Create a new workbook and append the loaded sheet
+        # Create a new workbook
         wb = Workbook()
-        wb.worksheets.clear()
-        wb.worksheets.append(sheet)
+        sheet = wb.active
+        # Load a worksheet into the workbook
+        self.load_worksheet(wb.active)
+        # Save the workbook
         wb.save(self.target)
         return True
