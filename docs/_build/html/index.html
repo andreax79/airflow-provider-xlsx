@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Airflow Provider XLSX &#8212; airflow-provider-xlsx 0.0.6 documentation</title>
+    <title>Airflow Provider XLSX &#8212; airflow-provider-xlsx 0.0.7 documentation</title>
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     
@@ -26,7 +26,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.6 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.7 documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Airflow Provider XLSX</a></li> 
       </ul>
     </div>  
@@ -305,7 +305,7 @@ Context is the same dictionary used as when rendering jinja templates.</p>
 
 <dl class="py data">
 <dt id="xlsx_provider.commons.VERSION">
-<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">VERSION</code><em class="property"> = '0.0.6'</em><a class="headerlink" href="#xlsx_provider.commons.VERSION" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">VERSION</code><em class="property"> = '0.0.7'</em><a class="headerlink" href="#xlsx_provider.commons.VERSION" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plugin Version</p>
 </dd></dl>
 
@@ -333,6 +333,12 @@ Context is the same dictionary used as when rendering jinja templates.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt id="xlsx_provider.commons.copy_cells">
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">copy_cells</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/commons.html#copy_cells"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#xlsx_provider.commons.copy_cells" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy cells from source worksheet to target</p>
+</dd></dl>
+
+<dl class="py function">
 <dt id="xlsx_provider.commons.get_column_names">
 <code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">get_column_names</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sheet</span></em>, <em class="sig-param"><span class="n">skip_rows</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/commons.html#get_column_names"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#xlsx_provider.commons.get_column_names" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the column names from the first row of the worksheet</p>
@@ -344,6 +350,12 @@ Context is the same dictionary used as when rendering jinja templates.</p>
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="xlsx_provider.commons.print_sheet">
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">print_sheet</code><span class="sig-paren">(</span><em class="sig-param">sheet</em>, <em class="sig-param">fileobj=&lt;_io.TextIOWrapper name='&lt;stdout&gt;' mode='w' encoding='utf-8'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/commons.html#print_sheet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#xlsx_provider.commons.print_sheet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print a sheet on standard output as CSV</p>
 </dd></dl>
 
 <dl class="py function">
@@ -422,7 +434,7 @@ Context is the same dictionary used as when rendering jinja templates.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.6 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.7 documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Airflow Provider XLSX</a></li> 
       </ul>
     </div>
