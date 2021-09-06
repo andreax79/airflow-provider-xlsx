@@ -69,3 +69,25 @@ class ToXLSXOperator(BaseOperator):
         # Save the workbook
         wb.save(self.target)
         return True
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename')
+    parser.add_argument(
+        '--delimiter', dest='csv_delimiter', default=DEFAULT_CSV_DELIMITER
+    )
+    parser.add_argument('-o', '--output', dest='output')
+    parser.add_argument('--skip_rows', dest='skip_rows', default=0)
+    args = parser.parse_args()
+    file_format = 'xlsx'
+    so = ToXLSXOperator(
+        task_id='test',
+        source=args.filename,
+        target=args.output or (args.filename + '.' + file_format),
+        csv_delimiter=args.csv_delimiter,
+        skip_rows=args.skip_rows,
+    )
+    so.execute({})
