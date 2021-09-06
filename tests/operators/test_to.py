@@ -73,11 +73,14 @@ class TestTo(TestCase):
             file_format='csv',
         )
         so.execute({})
+        lines = 0
         with open(target_check, 'r') as f:
             reader = csv.reader(f, delimiter='|')
             for i, row in enumerate(reader):
-                if i > 1:
+                if i > 0:
+                    lines += 1
                     self.assertEqual(row, TEST_DATA[i - 1])
+        self.assertEqual(lines, len(TEST_DATA))
 
     def test_parquet_xlsx(self):
         source = os.path.join(self.root_dir, 'test.xls.parquet')
@@ -98,11 +101,14 @@ class TestTo(TestCase):
             file_format='csv',
         )
         so.execute({})
+        lines = 0
         with open(target_check, 'r') as f:
             reader = csv.reader(f, delimiter='|')
             for i, row in enumerate(reader):
-                if i > 1:
+                if i > 0:
+                    lines += 1
                     self.assertEqual(row, TEST_DATA[i - 1])
+        self.assertEqual(lines, len(TEST_DATA))
 
     def test_json_xlsx(self):
         source = os.path.join(self.root_dir, 'test.xls.json')
@@ -123,11 +129,14 @@ class TestTo(TestCase):
             file_format='csv',
         )
         so.execute({})
+        lines = 0
         with open(target_check, 'r') as f:
             reader = csv.reader(f, delimiter='|')
             for i, row in enumerate(reader):
-                if i > 1:
+                if i > 0:
+                    lines += 1
                     self.assertEqual(row, TEST_DATA[i - 1])
+        self.assertEqual(lines, len(TEST_DATA))
 
     def test_jsonl_xlsx(self):
         source = os.path.join(self.root_dir, 'test.xls.jsonl')
@@ -148,11 +157,71 @@ class TestTo(TestCase):
             file_format='csv',
         )
         so.execute({})
+        lines = 0
         with open(target_check, 'r') as f:
             reader = csv.reader(f, delimiter='|')
             for i, row in enumerate(reader):
-                if i > 1:
+                if i > 0:
+                    lines += 1
                     self.assertEqual(row, TEST_DATA[i - 1])
+        self.assertEqual(lines, len(TEST_DATA))
+
+    def test_xls_xlsx(self):
+        source = os.path.join(self.root_dir, 'test.xls')
+        target = os.path.join(self.target_dir, 'test.xlsx')
+        target_check = os.path.join(self.target_dir, 'test.xlsx.csv')
+        so = ToXLSXOperator(
+            task_id='test',
+            source=source,
+            target=target,
+        )
+        so.execute({})
+        so = FromXLSXOperator(
+            task_id='test',
+            source=target,
+            target=target_check,
+            limit=10,
+            csv_delimiter='|',
+            file_format='csv',
+        )
+        so.execute({})
+        lines = 0
+        with open(target_check, 'r') as f:
+            reader = csv.reader(f, delimiter='|')
+            for i, row in enumerate(reader):
+                if i > 0:
+                    lines += 1
+                    self.assertEqual(row, TEST_DATA[i - 1])
+        self.assertEqual(lines, len(TEST_DATA))
+
+    def test_xlsx_xlsx(self):
+        source = os.path.join(self.root_dir, 'test.xlsx')
+        target = os.path.join(self.target_dir, 'test.xlsx')
+        target_check = os.path.join(self.target_dir, 'test.xlsx.csv')
+        so = ToXLSXOperator(
+            task_id='test',
+            source=source,
+            target=target,
+        )
+        so.execute({})
+        so = FromXLSXOperator(
+            task_id='test',
+            source=target,
+            target=target_check,
+            limit=10,
+            csv_delimiter='|',
+            file_format='csv',
+        )
+        so.execute({})
+        lines = 0
+        with open(target_check, 'r') as f:
+            reader = csv.reader(f, delimiter='|')
+            for i, row in enumerate(reader):
+                if i > 0:
+                    lines += 1
+                    self.assertEqual(row, TEST_DATA[i - 1])
+        self.assertEqual(lines, len(TEST_DATA))
+
 
 
 if __name__ == '__main__':
