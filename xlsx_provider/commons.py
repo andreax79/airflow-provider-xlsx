@@ -5,6 +5,9 @@ import os.path
 import re
 import datetime
 import unicodedata
+import sys
+import csv
+from copy import copy
 from enum import Enum
 
 __all__ = [
@@ -13,6 +16,8 @@ __all__ = [
     'get_type',
     'clean_key',
     'col_number_to_name',
+    'copy_cells',
+    'print_sheet',
     'quoted',
     'rmdiacritics',
     'FileFormat',
@@ -134,6 +139,22 @@ def check_column_names(column_names):
     if len(set(column_names)) != len(column_names):
         duplicates = list(set([x for x in column_names if column_names.count(x) > 1]))
         raise Exception('Columns names are not unique: {0}'.format(duplicates))
+
+
+def print_sheet(sheet, fileobj=sys.stdout):
+    "Print a sheet on standard output as CSV"
+    csw_writer = csv.writer(fileobj, quoting=csv.QUOTE_MINIMAL, delimiter=',')
+    csw_writer.writerows(sheet.values)
+
+
+def copy_cells(source, target):
+    "Copy cells from source worksheet to target"
+    for (row, col), source_cell in source._cells.items():
+        target_cell = target.cell(column=col, row=row)
+        target_cell._value = source_cell._value
+        target_cell.data_type = source_cell.data_type
+        if source_cell.has_style:
+            target_cell.number_format = copy(source_cell.number_format)
 
 
 class FileFormat(Enum):
