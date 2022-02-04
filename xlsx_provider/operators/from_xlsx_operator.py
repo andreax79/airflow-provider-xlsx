@@ -119,11 +119,12 @@ class FromXLSXOperator(BaseOperator):
                 names = self.names
             else:
                 names = get_column_names(sheet, skip_rows=self.skip_rows)
+            empty_lines = 0
             # Check unique columns
             check_column_names(names)
             datatypes = dict([(name, self.types.get(name)) for name in names])
             if INDEX_COLUMN_NAME in datatypes:
-                datatypes[INDEX_COLUMN_NAME] = 'd'
+                datatypes[INDEX_COLUMN_NAME] = 'double'
             columns = dict([(name, []) for name in names])
             for name, value in self.add_columns.items():
                 datatypes[name] = get_type(name, value)
@@ -131,6 +132,14 @@ class FromXLSXOperator(BaseOperator):
             for _index, row in enumerate(rows[1:]):
                 if self.limit is not None and _index >= self.limit:
                     break
+                # Skip empty lines
+                empty = True
+                for i, name in enumerate(names):
+                    if name != INDEX_COLUMN_NAME and row[i].value is not None:
+                        empty = False
+                if empty:
+                    empty_lines = empty_lines + 1
+                    continue
                 for i, name in enumerate(names):
                     if name == INDEX_COLUMN_NAME:
                         columns[INDEX_COLUMN_NAME].append(_index)
@@ -158,7 +167,9 @@ class FromXLSXOperator(BaseOperator):
             if self.limit is not None:
                 row_num = min(row_num, self.limit)
             for i, name in enumerate(names):
-                assert len(columns[name]) == row_num  # check rows number (skip header)
+                assert (
+                    len(columns[name]) == row_num - empty_lines
+                )  # check rows number (skip header)
             self.write(names, columns, datatypes)
         except Exception as e:
             raise AirflowException("XLSXToParquet operator error: {0}".format(str(e)))

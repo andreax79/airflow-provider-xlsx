@@ -104,8 +104,10 @@ def col_number_to_name(col_number):
 
 
 def get_type(name, value):
-    if isinstance(value, float) or isinstance(value, int):
-        return 'd'  # double
+    if isinstance(value, float):
+        return 'double'  # double
+    elif isinstance(value, int):
+        return 'int64'  # int
     elif isinstance(value, datetime.datetime):
         return 'datetime64[ns]'  # datetime
     elif isinstance(value, str):
