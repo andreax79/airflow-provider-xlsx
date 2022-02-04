@@ -35,8 +35,8 @@ class TestMisc(TestCase):
         self.assertEqual(rmdiacritics('ü'), 'u')
 
     def test_get_type(self):
-        self.assertEqual(get_type('t1', 1), 'd')
-        self.assertEqual(get_type('t2', 1.0), 'd')
+        self.assertEqual(get_type('t1', 1), 'int64')
+        self.assertEqual(get_type('t2', 1.0), 'double')
         self.assertEqual(get_type('t3', datetime.now()), 'datetime64[ns]')
         self.assertEqual(get_type('t4', 'ciao'), 'str')
         self.assertEqual(get_type('t5', 'ciao'), 'str')
