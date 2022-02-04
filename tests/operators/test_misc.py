@@ -29,28 +29,29 @@ class TestMisc(TestCase):
         ]:
             self.assertTrue(key in t)
 
-    def rmdiacritics(self):
-        self.assertEquals(rmdiacritics('città'), 'citta')
-        self.assertEquals(rmdiacritics('uüu'), 'uuu')
+    def test_rmdiacritics(self):
+        self.assertEqual(rmdiacritics('a'), 'a')
+        self.assertEqual(rmdiacritics('à'), 'a')
+        self.assertEqual(rmdiacritics('ü'), 'u')
 
-    def get_type(self):
-        self.assertEquals(get_type(1), 'd')
-        self.assertEquals(get_type(1.0), 'd')
-        self.assertEquals(get_type(datetime.now()), 'datetime64[ns]')
-        self.assertEquals(get_type('ciao'), 'str')
-        self.assertEquals(get_type('ciao'), 'str')
+    def test_get_type(self):
+        self.assertEqual(get_type('t1', 1), 'd')
+        self.assertEqual(get_type('t2', 1.0), 'd')
+        self.assertEqual(get_type('t3', datetime.now()), 'datetime64[ns]')
+        self.assertEqual(get_type('t4', 'ciao'), 'str')
+        self.assertEqual(get_type('t5', 'ciao'), 'str')
 
     @expect_exception(Exception)
-    def get_type_exception(self):
-        get_type(None)
+    def test_get_type_exception(self):
+        get_type('t1', None)
 
-    def check_column_names(self):
+    def test_check_column_names(self):
         check_column_names([])
         check_column_names(['a', 'b', 'c'])
         self.assertTrue(True)
 
     @expect_exception(Exception)
-    def check_column_names_exception(self):
+    def test_check_column_names_exception(self):
         check_column_names(['a', 'b', 'a', 'c'])
 
 
