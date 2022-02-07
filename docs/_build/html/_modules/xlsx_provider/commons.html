@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>xlsx_provider.commons &#8212; airflow-provider-xlsx 0.0.7 documentation</title>
+    <title>xlsx_provider.commons &#8212; airflow-provider-xlsx 0.0.9 documentation</title>
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     
@@ -26,7 +26,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.7 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.commons</a></li> 
       </ul>
@@ -65,10 +65,15 @@
     <span class="s1">&#39;HEADER_UPPER&#39;</span><span class="p">,</span>
     <span class="s1">&#39;HEADER_SKIP&#39;</span><span class="p">,</span>
     <span class="s1">&#39;DEFAULT_FORMAT&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DEFAULT_FLOAT_FORMAT&#39;</span><span class="p">,</span>
     <span class="s1">&#39;DEFAULT_CSV_DELIMITER&#39;</span><span class="p">,</span>
     <span class="s1">&#39;DEFAULT_CSV_HEADER&#39;</span><span class="p">,</span>
     <span class="s1">&#39;DEFAULT_TABLE_NAME&#39;</span><span class="p">,</span>
     <span class="s1">&#39;INDEX_COLUMN_NAME&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TYPE_DOUBLE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TYPE_INT&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TYPE_DATETIME&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TYPE_STING&#39;</span><span class="p">,</span>
     <span class="s1">&#39;XLS_EPOC&#39;</span><span class="p">,</span>
     <span class="s1">&#39;XLSX_EPOC&#39;</span><span class="p">,</span>
     <span class="s1">&#39;VERSION&#39;</span><span class="p">,</span>
@@ -79,6 +84,8 @@
 <span class="n">HEADER_SKIP</span> <span class="o">=</span> <span class="s1">&#39;skip&#39;</span>
 <span class="c1">#: Default output format</span>
 <span class="n">DEFAULT_FORMAT</span> <span class="o">=</span> <span class="s1">&#39;parquet&#39;</span>
+<span class="c1">#: Default float format</span>
+<span class="n">DEFAULT_FLOAT_FORMAT</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%g</span><span class="s1">&#39;</span>
 <span class="c1">#: Default CSV delimiter</span>
 <span class="n">DEFAULT_CSV_DELIMITER</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span>
 <span class="c1">#: Default CSV header case</span>
@@ -92,6 +99,10 @@
 <span class="c1">#: Index colummn name</span>
 <span class="n">INDEX_COLUMN_NAME</span> <span class="o">=</span> <span class="s1">&#39;_index&#39;</span>
 
+<span class="n">TYPE_DOUBLE</span> <span class="o">=</span> <span class="s1">&#39;double&#39;</span>
+<span class="n">TYPE_INT</span> <span class="o">=</span> <span class="s1">&#39;int64&#39;</span>
+<span class="n">TYPE_DATETIME</span> <span class="o">=</span> <span class="s1">&#39;datetime64[ns]&#39;</span>
+<span class="n">TYPE_STRING</span> <span class="o">=</span> <span class="s1">&#39;str&#39;</span>
 
 <span class="n">VERSION_FILE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;VERSION&quot;</span><span class="p">)</span>
 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">VERSION_FILE</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
@@ -144,12 +155,14 @@
 
 
 <span class="k">def</span> <span class="nf">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s1">&#39;d&#39;</span>  <span class="c1"># double</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">TYPE_DOUBLE</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">TYPE_INT</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s1">&#39;datetime64[ns]&#39;</span>  <span class="c1"># datetime</span>
+        <span class="k">return</span> <span class="n">TYPE_DATETIME</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s1">&#39;str&#39;</span>
+        <span class="k">return</span> <span class="n">TYPE_STRING</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;unsupported data type </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
 
@@ -243,7 +256,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.7 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.commons</a></li> 
       </ul>

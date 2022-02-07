@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Airflow Provider XLSX &#8212; airflow-provider-xlsx 0.0.7 documentation</title>
+    <title>Airflow Provider XLSX &#8212; airflow-provider-xlsx 0.0.9 documentation</title>
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     
@@ -26,7 +26,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.7 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Airflow Provider XLSX</a></li> 
       </ul>
     </div>  
@@ -75,7 +75,7 @@
 <span id="xlsx-provider-operators-from-xlsx-operator"></span><h2>xlsx_provider.operators.from_xlsx_operator<a class="headerlink" href="#module-xlsx_provider.operators.from_xlsx_operator" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
 <dt id="xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator">
-<em class="property">class </em><code class="sig-prename descclassname">xlsx_provider.operators.from_xlsx_operator.</code><code class="sig-name descname">FromXLSXOperator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">worksheet</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">skip_rows</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">limit</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">drop_columns</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">add_columns</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">types</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">column_names</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">file_format</span><span class="o">=</span><span class="default_value">'parquet'</span></em>, <em class="sig-param"><span class="n">csv_delimiter</span><span class="o">=</span><span class="default_value">','</span></em>, <em class="sig-param"><span class="n">csv_header</span><span class="o">=</span><span class="default_value">'lower'</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/operators/from_xlsx_operator.html#FromXLSXOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">xlsx_provider.operators.from_xlsx_operator.</code><code class="sig-name descname">FromXLSXOperator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">worksheet</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">skip_rows</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">limit</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">drop_columns</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">add_columns</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">types</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">column_names</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">file_format</span><span class="o">=</span><span class="default_value">'parquet'</span></em>, <em class="sig-param"><span class="n">csv_delimiter</span><span class="o">=</span><span class="default_value">','</span></em>, <em class="sig-param"><span class="n">csv_header</span><span class="o">=</span><span class="default_value">'lower'</span></em>, <em class="sig-param"><span class="n">float_format</span><span class="o">=</span><span class="default_value">'%g'</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/operators/from_xlsx_operator.html#FromXLSXOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert an XLSX/XLS file into Parquet or CSV file</p>
 <p>Read an XLSX or XLS file and convert it into Parquet, CSV, JSON, JSON Lines(one line per record) file.</p>
 <dl class="field-list simple">
@@ -88,11 +88,12 @@
 <li><p><strong>limit</strong> (<em>int</em>) – Row limit (default: None, templated)</p></li>
 <li><p><strong>drop_columns</strong> (<em>list of str</em>) – List of columns to be dropped</p></li>
 <li><p><strong>add_columns</strong> (<em>list of str</em><em> or </em><em>dictionary of string key/value pair</em>) – Columns to be added (dict or list column=value)</p></li>
-<li><p><strong>types</strong> (<em>str</em><em> or </em><em>dictionary of string key/value pair</em>) – force Parquet column types (dict or list column=’str’, ‘d’, ‘datetime64[ns]’)</p></li>
+<li><p><strong>types</strong> (<em>str</em><em> or </em><em>dictionary of string key/value pair</em>) – force Parquet column types (dict or list column=’str’, ‘int64’, ‘double’, ‘datetime64[ns]’)</p></li>
 <li><p><strong>column_names</strong> (<em>list of str</em>) – force columns names (list)</p></li>
 <li><p><strong>file_format</strong> (<em>str</em>) – Output file format (parquet, csv, json, jsonl)</p></li>
 <li><p><strong>csv_delimiter</strong> (<em>str</em>) – CSV delimiter (default: ‘,’)</p></li>
 <li><p><strong>csv_header</strong> (<em>str</em>) – Convert CSV output header case (‘lower’, ‘upper’, ‘skip’)</p></li>
+<li><p><strong>float_format</strong> (<em>str</em>) – Format string for floating point numbers (default ‘%g’)</p></li>
 </ul>
 </dd>
 </dl>
@@ -164,7 +165,7 @@ The output columns names and types are determinated by the SQL query output.</p>
 <li><p><strong>target</strong> (<em>str</em>) – Target filename (templated)</p></li>
 <li><p><strong>worksheet</strong> (<em>str</em><em> or </em><em>int</em>) – Worksheet title or number (zero-based, templated)</p></li>
 <li><p><strong>skip_rows</strong> (<em>int</em>) – Number of input lines to skip (default: 0, templated)</p></li>
-<li><p><strong>types</strong> (<em>str</em><em> or </em><em>dictionary of string key/value pair</em>) – force Parquet column types (dict or list column=’str’, ‘d’, ‘datetime64[ns]’)</p></li>
+<li><p><strong>types</strong> (<em>str</em><em> or </em><em>dictionary of string key/value pair</em>) – force Parquet column types (dict or list column=’str’, ‘int64’, ‘double’, ‘datetime64[ns]’)</p></li>
 <li><p><strong>file_format</strong> (<em>str</em>) – Output file format (parquet, csv, json, jsonl)</p></li>
 <li><p><strong>csv_delimiter</strong> (<em>str</em>) – CSV delimiter (default: ‘,’)</p></li>
 <li><p><strong>csv_header</strong> (<em>str</em>) – Convert CSV output header case (‘lower’, ‘upper’, ‘skip’)</p></li>
@@ -280,6 +281,12 @@ Context is the same dictionary used as when rendering jinja templates.</p>
 </dd></dl>
 
 <dl class="py data">
+<dt id="xlsx_provider.commons.DEFAULT_FLOAT_FORMAT">
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">DEFAULT_FLOAT_FORMAT</code><em class="property"> = '%g'</em><a class="headerlink" href="#xlsx_provider.commons.DEFAULT_FLOAT_FORMAT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default float format</p>
+</dd></dl>
+
+<dl class="py data">
 <dt id="xlsx_provider.commons.DEFAULT_FORMAT">
 <code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">DEFAULT_FORMAT</code><em class="property"> = 'parquet'</em><a class="headerlink" href="#xlsx_provider.commons.DEFAULT_FORMAT" title="Permalink to this definition">¶</a></dt>
 <dd><p>Default output format</p>
@@ -305,7 +312,7 @@ Context is the same dictionary used as when rendering jinja templates.</p>
 
 <dl class="py data">
 <dt id="xlsx_provider.commons.VERSION">
-<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">VERSION</code><em class="property"> = '0.0.7'</em><a class="headerlink" href="#xlsx_provider.commons.VERSION" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">VERSION</code><em class="property"> = '0.0.9'</em><a class="headerlink" href="#xlsx_provider.commons.VERSION" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plugin Version</p>
 </dd></dl>
 
@@ -434,7 +441,7 @@ Context is the same dictionary used as when rendering jinja templates.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.7 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Airflow Provider XLSX</a></li> 
       </ul>
     </div>
