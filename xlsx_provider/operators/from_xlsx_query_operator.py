@@ -41,7 +41,7 @@ class FromXLSXQueryOperator(FromXLSXOperator):
     :type worksheet: str or int
     :param skip_rows: Number of input lines to skip (default: 0, templated)
     :type skip_rows: int
-    :param types: force Parquet column types (dict or list column='str', 'd', 'datetime64[ns]')
+    :param types: force Parquet column types (dict or list column='str', 'int64', 'double', 'datetime64[ns]')
     :type types: str or dictionary of string key/value pair
     :param file_format: Output file format (parquet, csv, json, jsonl)
     :type file_format: str

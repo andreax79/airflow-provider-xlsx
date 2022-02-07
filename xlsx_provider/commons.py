@@ -25,10 +25,15 @@ __all__ = [
     'HEADER_UPPER',
     'HEADER_SKIP',
     'DEFAULT_FORMAT',
+    'DEFAULT_FLOAT_FORMAT',
     'DEFAULT_CSV_DELIMITER',
     'DEFAULT_CSV_HEADER',
     'DEFAULT_TABLE_NAME',
     'INDEX_COLUMN_NAME',
+    'TYPE_DOUBLE',
+    'TYPE_INT',
+    'TYPE_DATETIME',
+    'TYPE_STING',
     'XLS_EPOC',
     'XLSX_EPOC',
     'VERSION',
@@ -39,6 +44,8 @@ HEADER_UPPER = 'upper'
 HEADER_SKIP = 'skip'
 #: Default output format
 DEFAULT_FORMAT = 'parquet'
+#: Default float format
+DEFAULT_FLOAT_FORMAT = '%g'
 #: Default CSV delimiter
 DEFAULT_CSV_DELIMITER = ','
 #: Default CSV header case
@@ -52,6 +59,10 @@ DEFAULT_TABLE_NAME = 'xls'
 #: Index colummn name
 INDEX_COLUMN_NAME = '_index'
 
+TYPE_DOUBLE = 'double'
+TYPE_INT = 'int64'
+TYPE_DATETIME = 'datetime64[ns]'
+TYPE_STRING = 'str'
 
 VERSION_FILE = os.path.join(os.path.dirname(__file__), "VERSION")
 with open(VERSION_FILE) as f:
@@ -105,13 +116,13 @@ def col_number_to_name(col_number):
 
 def get_type(name, value):
     if isinstance(value, float):
-        return 'double'  # double
+        return TYPE_DOUBLE
     elif isinstance(value, int):
-        return 'int64'  # int
+        return TYPE_INT
     elif isinstance(value, datetime.datetime):
-        return 'datetime64[ns]'  # datetime
+        return TYPE_DATETIME
     elif isinstance(value, str):
-        return 'str'
+        return TYPE_STRING
     else:
         raise Exception('unsupported data type {} {}'.format(name, type(value)))
 

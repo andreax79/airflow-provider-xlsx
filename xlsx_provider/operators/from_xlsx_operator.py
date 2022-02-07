@@ -15,7 +15,11 @@ from xlsx_provider.commons import (
     DEFAULT_CSV_DELIMITER,
     DEFAULT_CSV_HEADER,
     DEFAULT_FORMAT,
+    DEFAULT_FLOAT_FORMAT,
     INDEX_COLUMN_NAME,
+    TYPE_INT,
+    TYPE_DOUBLE,
+    TYPE_DATETIME,
     HEADER_UPPER,
     HEADER_LOWER,
     XLSX_EPOC,
@@ -44,7 +48,7 @@ class FromXLSXOperator(BaseOperator):
     :type drop_columns: list of str
     :param add_columns: Columns to be added (dict or list column=value)
     :type add_columns: list of str or dictionary of string key/value pair
-    :param types: force Parquet column types (dict or list column='str', 'd', 'datetime64[ns]')
+    :param types: force Parquet column types (dict or list column='str', 'int64', 'double', 'datetime64[ns]')
     :type types: str or dictionary of string key/value pair
     :param column_names: force columns names (list)
     :type column_names: list of str
@@ -54,6 +58,8 @@ class FromXLSXOperator(BaseOperator):
     :type csv_delimiter: str
     :param csv_header: Convert CSV output header case ('lower', 'upper', 'skip')
     :type csv_header: str
+    :param float_format: Format string for floating point numbers (default '%g')
+    :type float_format: str
     """
 
     FileFormat = FileFormat
@@ -75,6 +81,7 @@ class FromXLSXOperator(BaseOperator):
         file_format=DEFAULT_FORMAT,
         csv_delimiter=DEFAULT_CSV_DELIMITER,
         csv_header=DEFAULT_CSV_HEADER,
+        float_format=DEFAULT_FLOAT_FORMAT,
         *args,
         **kwargs
     ):
@@ -100,6 +107,7 @@ class FromXLSXOperator(BaseOperator):
         self.file_format = FileFormat.lookup(file_format)
         self.csv_delimiter = csv_delimiter
         self.csv_header = csv_header
+        self.float_format = float_format
 
     def load_worksheet(self, sheet=None):
         # Load a worksheet
@@ -110,6 +118,27 @@ class FromXLSXOperator(BaseOperator):
             skip_rows=self.skip_rows,
             csv_delimiter=self.csv_delimiter,
         )
+
+    def get_value_and_type(self, cel, name, datatypes):
+        value = cel.value
+        if isinstance(value, str):
+            value = value.strip()
+        if value is not None:
+            type_ = get_type(name, value)
+            if datatypes[name] is None:
+                datatypes[name] = type_
+            elif datatypes[name] == TYPE_INT and type_ == TYPE_DOUBLE:
+                datatypes[name] = type_
+        if datatypes[name] == TYPE_DATETIME:
+            if not value:
+                value = None
+            elif isinstance(value, int) or isinstance(value, float):
+                value = XLSX_EPOC + datetime.timedelta(days=value)
+            elif not isinstance(value, datetime.datetime) and not isinstance(
+                value, datetime.date
+            ):
+                value = dateutil.parser.parse(value)
+        return value
 
     def execute(self, context):
         try:
@@ -126,6 +155,7 @@ class FromXLSXOperator(BaseOperator):
             if INDEX_COLUMN_NAME in datatypes:
                 datatypes[INDEX_COLUMN_NAME] = 'double'
             columns = dict([(name, []) for name in names])
+            # Add the additional (fixed value) columns
             for name, value in self.add_columns.items():
                 datatypes[name] = get_type(name, value)
                 columns[name] = []
@@ -145,20 +175,7 @@ class FromXLSXOperator(BaseOperator):
                         columns[INDEX_COLUMN_NAME].append(_index)
                         continue
                     cel = row[i]
-                    value = cel.value
-                    if isinstance(value, str):
-                        value = value.strip()
-                    if datatypes[name] is None and value is not None:
-                        datatypes[name] = get_type(name, value)
-                    if datatypes[name] == 'datetime64[ns]':
-                        if not value:
-                            value = None
-                        elif isinstance(value, int) or isinstance(value, float):
-                            value = XLSX_EPOC + datetime.timedelta(days=value)
-                        elif not isinstance(
-                            value, datetime.datetime
-                        ) and not isinstance(value, datetime.date):
-                            value = dateutil.parser.parse(value)
+                    value = self.get_value_and_type(cel, name, datatypes)
                     columns[name].append(value)
                 for name, value in self.add_columns.items():
                     if name not in names:
@@ -215,7 +232,7 @@ class FromXLSXOperator(BaseOperator):
                 header=False,
                 index=False,
                 date_format='%Y-%m-%d %M:%M:%S',
-                float_format='%g',
+                float_format=self.float_format,
             )
 
     def write_json(self, names, columns, datatypes):
@@ -255,6 +272,7 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--add_col', dest='add_columns', action='append')
     parser.add_argument('-d', '--drop_col', dest='drop_columns', action='append')
     parser.add_argument('-t', '--type', dest='types', action='append')
+    parser.add_argument('--float_format', dest='float_format', default='%g')
     parser.add_argument(
         '--delimiter', dest='csv_delimiter', default=DEFAULT_CSV_DELIMITER
     )
@@ -283,5 +301,6 @@ if __name__ == "__main__":
         worksheet=args.worksheet,
         csv_delimiter=args.csv_delimiter,
         csv_header=args.csv_header,
+        float_format=args.float_format
     )
     so.execute({})
