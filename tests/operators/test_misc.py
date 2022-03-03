@@ -8,6 +8,7 @@ from xlsx_provider.commons import (
     get_type,
     rmdiacritics,
     TYPE_INT,
+    TYPE_NULLABLE_INT,
     TYPE_DATETIME,
     TYPE_DOUBLE,
     TYPE_STRING,
@@ -48,6 +49,13 @@ class TestMisc(TestCase):
         self.assertEqual(get_type('t3', datetime.now()), TYPE_DATETIME)
         self.assertEqual(get_type('t4', 'ciao'), TYPE_STRING)
         self.assertEqual(get_type('t5', 'ciao'), TYPE_STRING)
+
+    def test_get_type_nullable(self):
+        self.assertEqual(get_type('t1', 1, True), TYPE_NULLABLE_INT)
+        self.assertEqual(get_type('t2', 1.0, True), TYPE_DOUBLE)
+        self.assertEqual(get_type('t3', datetime.now()), TYPE_DATETIME, True)
+        self.assertEqual(get_type('t4', 'ciao', True), TYPE_STRING)
+        self.assertEqual(get_type('t5', 'ciao', True), TYPE_STRING)
 
     @expect_exception(Exception)
     def test_get_type_exception(self):

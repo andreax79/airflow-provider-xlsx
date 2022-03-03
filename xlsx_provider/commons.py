@@ -33,6 +33,7 @@ __all__ = [
     'INDEX_COLUMN_NAME',
     'TYPE_DOUBLE',
     'TYPE_INT',
+    'TYPE_NULLABLE_INT',
     'TYPE_DATETIME',
     'TYPE_STRING',
     'XLS_EPOC',
@@ -60,9 +61,15 @@ DEFAULT_TABLE_NAME = 'xls'
 #: Index colummn name
 INDEX_COLUMN_NAME = '_index'
 
+#: Double data type
 TYPE_DOUBLE = 'double'
+#: Integer data type
 TYPE_INT = 'int64'
+#: Integer data type with possibly missing value
+TYPE_NULLABLE_INT = 'Int64'
+#: Datetime data type
 TYPE_DATETIME = 'datetime64[ns]'
+#: String data type
 TYPE_STRING = 'str'
 
 VERSION_FILE = os.path.join(os.path.dirname(__file__), "VERSION")
@@ -115,11 +122,11 @@ def col_number_to_name(col_number):
         return _col_number_to_name(col_number - 1)
 
 
-def get_type(name, value):
+def get_type(name, value, nullable_int=False):
     if isinstance(value, float):
         return TYPE_DOUBLE
     elif isinstance(value, int):
-        return TYPE_INT
+        return TYPE_NULLABLE_INT if nullable_int else TYPE_INT
     elif isinstance(value, datetime.datetime):
         return TYPE_DATETIME
     elif isinstance(value, str):

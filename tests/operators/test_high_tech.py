@@ -78,5 +78,43 @@ class TestFromQuery(TestCase):
         self.assertEqual(data, TEST_DATA_JSON)
 
 
+class TestFromQueryNullableInt(TestCase):
+    def setUp(self):
+        self.root_dir = os.path.dirname(os.path.realpath(__file__))
+        self.target_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.target_dir)
+
+    def test_read_xlsx(self):
+        source = os.path.join(self.root_dir, 'high_tech.xlsx')
+        target = os.path.join(self.target_dir, 'high_tech.xlsx.json')
+        so = FromXLSXQueryOperator(
+            task_id='test',
+            source=source,
+            target=target,
+            file_format='json',
+            table_name='test',
+            worksheet='Figure 3',
+            query='''
+                select
+                    g as high_tech_sector,
+                    cast(h * 1000 as int) as value,
+                    i as share
+                from
+                    test
+                where
+                    _index > 1
+                    and high_tech_sector <> ''
+                    and lower(high_tech_sector) <> 'total'
+            ''',
+            nullable_int=True,
+        )
+        so.execute({})
+        with open(target, 'r') as f:
+            data = json.load(f)
+        self.assertEqual(data, TEST_DATA_JSON)
+
+
 if __name__ == '__main__':
     main()

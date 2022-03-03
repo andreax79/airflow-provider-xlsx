@@ -146,5 +146,87 @@ class TestFromQuery(TestCase):
         so.execute({})
 
 
+class TestFromQueryNullableInt(TestCase):
+    def setUp(self):
+        self.root_dir = os.path.dirname(os.path.realpath(__file__))
+        self.target_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.target_dir)
+
+    def test_to_csv(self):
+        source = os.path.join(self.root_dir, 'test.xlsx')
+        target = os.path.join(self.target_dir, 'test.xlsx.csv')
+        so = FromXLSXQueryOperator(
+            task_id='test',
+            source=source,
+            target=target,
+            csv_delimiter='|',
+            file_format='csv',
+            table_name='test',
+            query=QUERY,
+            nullable_int=True,
+        )
+        so.execute({})
+        with open(target, 'r') as f:
+            reader = csv.reader(f, delimiter='|')
+            for i, row in enumerate(reader):
+                if i >= 1:
+                    self.assertEqual(row, TEST_DATA[i - 1])
+
+    def test_to_json(self):
+        source = os.path.join(self.root_dir, 'test.xlsx')
+        target = os.path.join(self.target_dir, 'test.xlsx.json')
+        so = FromXLSXQueryOperator(
+            task_id='test',
+            source=source,
+            target=target,
+            csv_delimiter='|',
+            file_format='json',
+            table_name='test',
+            query=QUERY,
+            nullable_int=True,
+        )
+        so.execute({})
+        with open(target, 'r') as f:
+            data = json.load(f)
+            self.assertEqual(data, TEST_DATA_JSON)
+
+    def test_to_jsonl(self):
+        source = os.path.join(self.root_dir, 'test.xlsx')
+        target = os.path.join(self.target_dir, 'test.xlsx.jsonl')
+        so = FromXLSXQueryOperator(
+            task_id='test',
+            source=source,
+            target=target,
+            csv_delimiter='|',
+            file_format='jsonl',
+            table_name='test',
+            query=QUERY,
+            nullable_int=True,
+        )
+        so.execute({})
+        with open(target, 'r') as f:
+            data = json.loads('[' + f.read().replace('\n', ',') + ']')
+            self.assertEqual(data, TEST_DATA_JSON)
+
+    @expect_exception(AirflowException)
+    def test_invalid_worksheet(self):
+        source = os.path.join(self.root_dir, 'test.xlsx')
+        target = os.path.join(self.target_dir, 'test.xlsx.csv')
+        so = FromXLSXQueryOperator(
+            task_id='test',
+            source=source,
+            target=target,
+            csv_delimiter='|',
+            file_format='csv',
+            table_name='test',
+            worksheet='bla',
+            query=QUERY,
+            nullable_int=True,
+        )
+        so.execute({})
+
+
 if __name__ == '__main__':
     main()

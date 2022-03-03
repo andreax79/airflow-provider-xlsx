@@ -55,6 +55,8 @@ class FromXLSXQueryOperator(FromXLSXOperator):
     :param table_name: Table name (default: 'xls', templated)
     :param use_first_row_as_header: if true, use the first row as column names otherwhise use A, B, C, ... as colum names
     :type use_first_row_as_header: bool
+    :param nullable_int: nullable integer data type support
+    :type nullable_int: bool
     """
 
     FileFormat = FileFormat
@@ -82,6 +84,7 @@ class FromXLSXQueryOperator(FromXLSXOperator):
         query=None,
         table_name=DEFAULT_TABLE_NAME,
         use_first_row_as_header=False,
+        nullable_int=False,
         *args,
         **kwargs
     ):
@@ -100,6 +103,7 @@ class FromXLSXQueryOperator(FromXLSXOperator):
         self.query = query
         self.table_name = table_name
         self.use_first_row_as_header = use_first_row_as_header
+        self.nullable_int = nullable_int
 
     def write_parquet(self, result):
         "Write the results in parquet format"
@@ -171,7 +175,9 @@ class FromXLSXQueryOperator(FromXLSXOperator):
                 check_column_names(column_names)
             else:
                 column_names = None
-            result = Result(self.table_name, sheet, self.types, column_names)
+            result = Result(
+                self.table_name, sheet, self.types, column_names, self.nullable_int
+            )
             result.process(self.query)
             self.write(result)
         except Exception as e:
@@ -180,11 +186,12 @@ class FromXLSXQueryOperator(FromXLSXOperator):
 
 
 class Result(object):
-    def __init__(self, table_name, sheet, types, column_names=None):
+    def __init__(self, table_name, sheet, types, column_names=None, nullable_int=False):
         self.table_name = table_name
         self.sheet = sheet
         self.types = types
         self.column_names = column_names
+        self.nullable_int = nullable_int
 
     def process_row(self, row):
         for i, name in enumerate(self.column_names):
@@ -194,7 +201,7 @@ class Result(object):
             value = prepare_value(name, value)
             self.columns[name].append(value)
             if self.datatypes[name] is None and value is not None:
-                self.datatypes[name] = get_type(name, value)
+                self.datatypes[name] = get_type(name, value, self.nullable_int)
 
     def process(self, query=None):
         detect_types = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES

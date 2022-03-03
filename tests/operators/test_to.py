@@ -223,6 +223,5 @@ class TestTo(TestCase):
         self.assertEqual(lines, len(TEST_DATA))
 
 
-
 if __name__ == '__main__':
     main()

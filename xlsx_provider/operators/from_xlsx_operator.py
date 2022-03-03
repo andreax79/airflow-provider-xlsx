@@ -19,6 +19,7 @@ from xlsx_provider.commons import (
     DEFAULT_FLOAT_FORMAT,
     INDEX_COLUMN_NAME,
     TYPE_INT,
+    TYPE_NULLABLE_INT,
     TYPE_DOUBLE,
     TYPE_DATETIME,
     HEADER_UPPER,
@@ -61,6 +62,8 @@ class FromXLSXOperator(BaseOperator):
     :type csv_header: str
     :param float_format: Format string for floating point numbers (default '%g')
     :type float_format: str
+    :param nullable_int: nullable integer data type support
+    :type nullable_int: bool
     """
 
     FileFormat = FileFormat
@@ -83,6 +86,7 @@ class FromXLSXOperator(BaseOperator):
         csv_delimiter=DEFAULT_CSV_DELIMITER,
         csv_header=DEFAULT_CSV_HEADER,
         float_format=DEFAULT_FLOAT_FORMAT,
+        nullable_int=False,
         *args,
         **kwargs
     ):
@@ -109,6 +113,7 @@ class FromXLSXOperator(BaseOperator):
         self.csv_delimiter = csv_delimiter
         self.csv_header = csv_header
         self.float_format = float_format
+        self.nullable_int = nullable_int
 
     def load_worksheet(self, sheet=None):
         # Load a worksheet
@@ -124,10 +129,13 @@ class FromXLSXOperator(BaseOperator):
         value = cel.value
         if value is not None:
             value = prepare_value(name, value)
-            type_ = get_type(name, value)
+            type_ = get_type(name, value, self.nullable_int)
             if datatypes[name] is None:
                 datatypes[name] = type_
-            elif datatypes[name] == TYPE_INT and type_ == TYPE_DOUBLE:
+            elif (
+                datatypes[name] in (TYPE_INT, TYPE_NULLABLE_INT)
+                and type_ == TYPE_DOUBLE
+            ):
                 datatypes[name] = type_
         if datatypes[name] == TYPE_DATETIME:
             if not value:
@@ -157,7 +165,7 @@ class FromXLSXOperator(BaseOperator):
             columns = dict([(name, []) for name in names])
             # Add the additional (fixed value) columns
             for name, value in self.add_columns.items():
-                datatypes[name] = get_type(name, value)
+                datatypes[name] = get_type(name, value, self.nullable_int)
                 columns[name] = []
             for _index, row in enumerate(rows[1:]):
                 if self.limit is not None and _index >= self.limit:
@@ -288,6 +296,7 @@ if __name__ == "__main__":
     group.add_argument(
         '--parquet', dest='file_format_csv', action='store_false', default=False
     )
+    parser.add_argument('-n', '--nullable_int', action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
     file_format = 'csv' if args.file_format_csv else 'parquet'
     so = FromXLSXOperator(
@@ -301,6 +310,7 @@ if __name__ == "__main__":
         worksheet=args.worksheet,
         csv_delimiter=args.csv_delimiter,
         csv_header=args.csv_header,
-        float_format=args.float_format
+        float_format=args.float_format,
+        nullable_int=args.nullable_int
     )
     so.execute({})
