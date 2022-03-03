@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Airflow Provider XLSX &#8212; airflow-provider-xlsx 0.0.9 documentation</title>
+    <title>Airflow Provider XLSX &#8212; airflow-provider-xlsx 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     
@@ -26,7 +26,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 1.0.0 documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Airflow Provider XLSX</a></li> 
       </ul>
     </div>  
@@ -75,7 +75,7 @@
 <span id="xlsx-provider-operators-from-xlsx-operator"></span><h2>xlsx_provider.operators.from_xlsx_operator<a class="headerlink" href="#module-xlsx_provider.operators.from_xlsx_operator" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
 <dt id="xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator">
-<em class="property">class </em><code class="sig-prename descclassname">xlsx_provider.operators.from_xlsx_operator.</code><code class="sig-name descname">FromXLSXOperator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">worksheet</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">skip_rows</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">limit</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">drop_columns</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">add_columns</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">types</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">column_names</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">file_format</span><span class="o">=</span><span class="default_value">'parquet'</span></em>, <em class="sig-param"><span class="n">csv_delimiter</span><span class="o">=</span><span class="default_value">','</span></em>, <em class="sig-param"><span class="n">csv_header</span><span class="o">=</span><span class="default_value">'lower'</span></em>, <em class="sig-param"><span class="n">float_format</span><span class="o">=</span><span class="default_value">'%g'</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/operators/from_xlsx_operator.html#FromXLSXOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">xlsx_provider.operators.from_xlsx_operator.</code><code class="sig-name descname">FromXLSXOperator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">worksheet</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">skip_rows</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">limit</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">drop_columns</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">add_columns</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">types</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">column_names</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">file_format</span><span class="o">=</span><span class="default_value">'parquet'</span></em>, <em class="sig-param"><span class="n">csv_delimiter</span><span class="o">=</span><span class="default_value">','</span></em>, <em class="sig-param"><span class="n">csv_header</span><span class="o">=</span><span class="default_value">'lower'</span></em>, <em class="sig-param"><span class="n">float_format</span><span class="o">=</span><span class="default_value">'%g'</span></em>, <em class="sig-param"><span class="n">nullable_int</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/operators/from_xlsx_operator.html#FromXLSXOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#xlsx_provider.operators.from_xlsx_operator.FromXLSXOperator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert an XLSX/XLS file into Parquet or CSV file</p>
 <p>Read an XLSX or XLS file and convert it into Parquet, CSV, JSON, JSON Lines(one line per record) file.</p>
 <dl class="field-list simple">
@@ -94,6 +94,7 @@
 <li><p><strong>csv_delimiter</strong> (<em>str</em>) – CSV delimiter (default: ‘,’)</p></li>
 <li><p><strong>csv_header</strong> (<em>str</em>) – Convert CSV output header case (‘lower’, ‘upper’, ‘skip’)</p></li>
 <li><p><strong>float_format</strong> (<em>str</em>) – Format string for floating point numbers (default ‘%g’)</p></li>
+<li><p><strong>nullable_int</strong> (<em>bool</em>) – nullable integer data type support</p></li>
 </ul>
 </dd>
 </dl>
@@ -153,7 +154,7 @@ Context is the same dictionary used as when rendering jinja templates.</p>
 <h2>xlsx_provider.operators.operators.from_xlsx_query_operator<a class="headerlink" href="#xlsx-provider-operators-operators-from-xlsx-query-operator" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
 <dt>
-<em class="property">class </em><code class="sig-prename descclassname">xlsx_provider.operators.from_xlsx_query_operator.</code><code class="sig-name descname">FromXLSXQueryOperator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">worksheet</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">skip_rows</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">types</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">file_format</span><span class="o">=</span><span class="default_value">'parquet'</span></em>, <em class="sig-param"><span class="n">csv_delimiter</span><span class="o">=</span><span class="default_value">','</span></em>, <em class="sig-param"><span class="n">csv_header</span><span class="o">=</span><span class="default_value">'lower'</span></em>, <em class="sig-param"><span class="n">query</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">table_name</span><span class="o">=</span><span class="default_value">'xls'</span></em>, <em class="sig-param"><span class="n">use_first_row_as_header</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/operators/from_xlsx_query_operator.html#FromXLSXQueryOperator"><span class="viewcode-link">[source]</span></a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">xlsx_provider.operators.from_xlsx_query_operator.</code><code class="sig-name descname">FromXLSXQueryOperator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">worksheet</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">skip_rows</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">types</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">file_format</span><span class="o">=</span><span class="default_value">'parquet'</span></em>, <em class="sig-param"><span class="n">csv_delimiter</span><span class="o">=</span><span class="default_value">','</span></em>, <em class="sig-param"><span class="n">csv_header</span><span class="o">=</span><span class="default_value">'lower'</span></em>, <em class="sig-param"><span class="n">query</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">table_name</span><span class="o">=</span><span class="default_value">'xls'</span></em>, <em class="sig-param"><span class="n">use_first_row_as_header</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">nullable_int</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/operators/from_xlsx_query_operator.html#FromXLSXQueryOperator"><span class="viewcode-link">[source]</span></a></dt>
 <dd><p>Execute an SQL query an XLSX/XLS file and export the result into a Parquet or CSV file</p>
 <p>This operators loads an XLSX or XLS file into an in-memory SQLite database,
 executes a query on the db and stores the result into a Parquet, CSV, JSON, JSON Lines(one line per record) file.
@@ -172,6 +173,7 @@ The output columns names and types are determinated by the SQL query output.</p>
 <li><p><strong>query</strong> (<em>str</em>) – SQL query (templated)</p></li>
 <li><p><strong>table_name</strong> – Table name (default: ‘xls’, templated)</p></li>
 <li><p><strong>use_first_row_as_header</strong> (<em>bool</em>) – if true, use the first row as column names otherwhise use A, B, C, … as colum names</p></li>
+<li><p><strong>nullable_int</strong> (<em>bool</em>) – nullable integer data type support</p></li>
 </ul>
 </dd>
 </dl>
@@ -311,8 +313,38 @@ Context is the same dictionary used as when rendering jinja templates.</p>
 </dd></dl>
 
 <dl class="py data">
+<dt id="xlsx_provider.commons.TYPE_DATETIME">
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">TYPE_DATETIME</code><em class="property"> = 'datetime64[ns]'</em><a class="headerlink" href="#xlsx_provider.commons.TYPE_DATETIME" title="Permalink to this definition">¶</a></dt>
+<dd><p>Datetime data type</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="xlsx_provider.commons.TYPE_DOUBLE">
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">TYPE_DOUBLE</code><em class="property"> = 'double'</em><a class="headerlink" href="#xlsx_provider.commons.TYPE_DOUBLE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Double data type</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="xlsx_provider.commons.TYPE_INT">
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">TYPE_INT</code><em class="property"> = 'int64'</em><a class="headerlink" href="#xlsx_provider.commons.TYPE_INT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Integer data type</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="xlsx_provider.commons.TYPE_NULLABLE_INT">
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">TYPE_NULLABLE_INT</code><em class="property"> = 'Int64'</em><a class="headerlink" href="#xlsx_provider.commons.TYPE_NULLABLE_INT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Integer data type with possibly missing value</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="xlsx_provider.commons.TYPE_STRING">
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">TYPE_STRING</code><em class="property"> = 'str'</em><a class="headerlink" href="#xlsx_provider.commons.TYPE_STRING" title="Permalink to this definition">¶</a></dt>
+<dd><p>String data type</p>
+</dd></dl>
+
+<dl class="py data">
 <dt id="xlsx_provider.commons.VERSION">
-<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">VERSION</code><em class="property"> = '0.0.9'</em><a class="headerlink" href="#xlsx_provider.commons.VERSION" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">VERSION</code><em class="property"> = '1.0.0'</em><a class="headerlink" href="#xlsx_provider.commons.VERSION" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plugin Version</p>
 </dd></dl>
 
@@ -357,6 +389,12 @@ Context is the same dictionary used as when rendering jinja templates.</p>
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="xlsx_provider.commons.prepare_value">
+<code class="sig-prename descclassname">xlsx_provider.commons.</code><code class="sig-name descname">prepare_value</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/xlsx_provider/commons.html#prepare_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#xlsx_provider.commons.prepare_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try cast string to int and float</p>
 </dd></dl>
 
 <dl class="py function">
@@ -441,7 +479,7 @@ Context is the same dictionary used as when rendering jinja templates.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="#">airflow-provider-xlsx 1.0.0 documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Airflow Provider XLSX</a></li> 
       </ul>
     </div>

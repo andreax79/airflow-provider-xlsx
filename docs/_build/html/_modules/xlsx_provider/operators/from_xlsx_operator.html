@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>xlsx_provider.operators.from_xlsx_operator &#8212; airflow-provider-xlsx 0.0.9 documentation</title>
+    <title>xlsx_provider.operators.from_xlsx_operator &#8212; airflow-provider-xlsx 1.0.0 documentation</title>
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     
@@ -26,7 +26,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 1.0.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.operators.from_xlsx_operator</a></li> 
       </ul>
@@ -50,6 +50,7 @@
 <span class="kn">from</span> <span class="nn">xlsx_provider.commons</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">check_column_names</span><span class="p">,</span>
     <span class="n">get_type</span><span class="p">,</span>
+    <span class="n">prepare_value</span><span class="p">,</span>
     <span class="n">get_column_names</span><span class="p">,</span>
     <span class="n">FileFormat</span><span class="p">,</span>
     <span class="n">DEFAULT_CSV_DELIMITER</span><span class="p">,</span>
@@ -58,6 +59,7 @@
     <span class="n">DEFAULT_FLOAT_FORMAT</span><span class="p">,</span>
     <span class="n">INDEX_COLUMN_NAME</span><span class="p">,</span>
     <span class="n">TYPE_INT</span><span class="p">,</span>
+    <span class="n">TYPE_NULLABLE_INT</span><span class="p">,</span>
     <span class="n">TYPE_DOUBLE</span><span class="p">,</span>
     <span class="n">TYPE_DATETIME</span><span class="p">,</span>
     <span class="n">HEADER_UPPER</span><span class="p">,</span>
@@ -100,6 +102,8 @@
 <span class="sd">    :type csv_header: str</span>
 <span class="sd">    :param float_format: Format string for floating point numbers (default &#39;%g&#39;)</span>
 <span class="sd">    :type float_format: str</span>
+<span class="sd">    :param nullable_int: nullable integer data type support</span>
+<span class="sd">    :type nullable_int: bool</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">FileFormat</span> <span class="o">=</span> <span class="n">FileFormat</span>
@@ -122,6 +126,7 @@
         <span class="n">csv_delimiter</span><span class="o">=</span><span class="n">DEFAULT_CSV_DELIMITER</span><span class="p">,</span>
         <span class="n">csv_header</span><span class="o">=</span><span class="n">DEFAULT_CSV_HEADER</span><span class="p">,</span>
         <span class="n">float_format</span><span class="o">=</span><span class="n">DEFAULT_FLOAT_FORMAT</span><span class="p">,</span>
+        <span class="n">nullable_int</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="o">*</span><span class="n">args</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
@@ -148,6 +153,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">csv_delimiter</span> <span class="o">=</span> <span class="n">csv_delimiter</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">csv_header</span> <span class="o">=</span> <span class="n">csv_header</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">float_format</span> <span class="o">=</span> <span class="n">float_format</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nullable_int</span> <span class="o">=</span> <span class="n">nullable_int</span>
 
     <span class="k">def</span> <span class="nf">load_worksheet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sheet</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="c1"># Load a worksheet</span>
@@ -161,13 +167,15 @@
 
     <span class="k">def</span> <span class="nf">get_value_and_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cel</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">datatypes</span><span class="p">):</span>
         <span class="n">value</span> <span class="o">=</span> <span class="n">cel</span><span class="o">.</span><span class="n">value</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">type_</span> <span class="o">=</span> <span class="n">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">prepare_value</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="n">type_</span> <span class="o">=</span> <span class="n">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nullable_int</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">type_</span>
-            <span class="k">elif</span> <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">==</span> <span class="n">TYPE_INT</span> <span class="ow">and</span> <span class="n">type_</span> <span class="o">==</span> <span class="n">TYPE_DOUBLE</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="p">(</span>
+                <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="n">TYPE_INT</span><span class="p">,</span> <span class="n">TYPE_NULLABLE_INT</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">type_</span> <span class="o">==</span> <span class="n">TYPE_DOUBLE</span>
+            <span class="p">):</span>
                 <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">type_</span>
         <span class="k">if</span> <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">==</span> <span class="n">TYPE_DATETIME</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="p">:</span>
@@ -197,7 +205,7 @@
             <span class="n">columns</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">name</span><span class="p">,</span> <span class="p">[])</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">])</span>
             <span class="c1"># Add the additional (fixed value) columns</span>
             <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_columns</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="n">datatypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nullable_int</span><span class="p">)</span>
                 <span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">_index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">_index</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span><span class="p">:</span>
@@ -328,6 +336,7 @@
     <span class="n">group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s1">&#39;--parquet&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;file_format_csv&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_false&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">False</span>
     <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-n&#39;</span><span class="p">,</span> <span class="s1">&#39;--nullable_int&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">BooleanOptionalAction</span><span class="p">)</span>
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
     <span class="n">file_format</span> <span class="o">=</span> <span class="s1">&#39;csv&#39;</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">file_format_csv</span> <span class="k">else</span> <span class="s1">&#39;parquet&#39;</span>
     <span class="n">so</span> <span class="o">=</span> <span class="n">FromXLSXOperator</span><span class="p">(</span>
@@ -341,7 +350,8 @@
         <span class="n">worksheet</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">worksheet</span><span class="p">,</span>
         <span class="n">csv_delimiter</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">csv_delimiter</span><span class="p">,</span>
         <span class="n">csv_header</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">csv_header</span><span class="p">,</span>
-        <span class="n">float_format</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">float_format</span>
+        <span class="n">float_format</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">float_format</span><span class="p">,</span>
+        <span class="n">nullable_int</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">nullable_int</span>
     <span class="p">)</span>
     <span class="n">so</span><span class="o">.</span><span class="n">execute</span><span class="p">({})</span>
 </pre></div>
@@ -375,7 +385,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">airflow-provider-xlsx 1.0.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.operators.from_xlsx_operator</a></li> 
       </ul>

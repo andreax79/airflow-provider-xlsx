@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>xlsx_provider.commons &#8212; airflow-provider-xlsx 0.0.9 documentation</title>
+    <title>xlsx_provider.commons &#8212; airflow-provider-xlsx 1.0.0 documentation</title>
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     
@@ -26,7 +26,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 1.0.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.commons</a></li> 
       </ul>
@@ -54,6 +54,7 @@
     <span class="s1">&#39;check_column_names&#39;</span><span class="p">,</span>
     <span class="s1">&#39;get_column_names&#39;</span><span class="p">,</span>
     <span class="s1">&#39;get_type&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;prepare_value&#39;</span><span class="p">,</span>
     <span class="s1">&#39;clean_key&#39;</span><span class="p">,</span>
     <span class="s1">&#39;col_number_to_name&#39;</span><span class="p">,</span>
     <span class="s1">&#39;copy_cells&#39;</span><span class="p">,</span>
@@ -72,8 +73,9 @@
     <span class="s1">&#39;INDEX_COLUMN_NAME&#39;</span><span class="p">,</span>
     <span class="s1">&#39;TYPE_DOUBLE&#39;</span><span class="p">,</span>
     <span class="s1">&#39;TYPE_INT&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TYPE_NULLABLE_INT&#39;</span><span class="p">,</span>
     <span class="s1">&#39;TYPE_DATETIME&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;TYPE_STING&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TYPE_STRING&#39;</span><span class="p">,</span>
     <span class="s1">&#39;XLS_EPOC&#39;</span><span class="p">,</span>
     <span class="s1">&#39;XLSX_EPOC&#39;</span><span class="p">,</span>
     <span class="s1">&#39;VERSION&#39;</span><span class="p">,</span>
@@ -99,9 +101,15 @@
 <span class="c1">#: Index colummn name</span>
 <span class="n">INDEX_COLUMN_NAME</span> <span class="o">=</span> <span class="s1">&#39;_index&#39;</span>
 
+<span class="c1">#: Double data type</span>
 <span class="n">TYPE_DOUBLE</span> <span class="o">=</span> <span class="s1">&#39;double&#39;</span>
+<span class="c1">#: Integer data type</span>
 <span class="n">TYPE_INT</span> <span class="o">=</span> <span class="s1">&#39;int64&#39;</span>
+<span class="c1">#: Integer data type with possibly missing value</span>
+<span class="n">TYPE_NULLABLE_INT</span> <span class="o">=</span> <span class="s1">&#39;Int64&#39;</span>
+<span class="c1">#: Datetime data type</span>
 <span class="n">TYPE_DATETIME</span> <span class="o">=</span> <span class="s1">&#39;datetime64[ns]&#39;</span>
+<span class="c1">#: String data type</span>
 <span class="n">TYPE_STRING</span> <span class="o">=</span> <span class="s1">&#39;str&#39;</span>
 
 <span class="n">VERSION_FILE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;VERSION&quot;</span><span class="p">)</span>
@@ -154,17 +162,31 @@
         <span class="k">return</span> <span class="n">_col_number_to_name</span><span class="p">(</span><span class="n">col_number</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span></div>
 
 
-<span class="k">def</span> <span class="nf">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">get_type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">nullable_int</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">TYPE_DOUBLE</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">TYPE_INT</span>
+        <span class="k">return</span> <span class="n">TYPE_NULLABLE_INT</span> <span class="k">if</span> <span class="n">nullable_int</span> <span class="k">else</span> <span class="n">TYPE_INT</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">TYPE_DATETIME</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">TYPE_STRING</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;unsupported data type </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+
+
+<div class="viewcode-block" id="prepare_value"><a class="viewcode-back" href="../../index.html#xlsx_provider.operators.from_xlsx_operator.prepare_value">[docs]</a><span class="k">def</span> <span class="nf">prepare_value</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="s2">&quot;Try cast string to int and float&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">value</span></div>
 
 
 <div class="viewcode-block" id="get_column_names"><a class="viewcode-back" href="../../index.html#xlsx_provider.operators.from_xlsx_operator.get_column_names">[docs]</a><span class="k">def</span> <span class="nf">get_column_names</span><span class="p">(</span><span class="n">sheet</span><span class="p">,</span> <span class="n">skip_rows</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
@@ -256,7 +278,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 0.0.9 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">airflow-provider-xlsx 1.0.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">xlsx_provider.commons</a></li> 
       </ul>
