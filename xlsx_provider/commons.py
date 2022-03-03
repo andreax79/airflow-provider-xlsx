@@ -33,7 +33,7 @@ __all__ = [
     'TYPE_DOUBLE',
     'TYPE_INT',
     'TYPE_DATETIME',
-    'TYPE_STING',
+    'TYPE_STRING',
     'XLS_EPOC',
     'XLSX_EPOC',
     'VERSION',
