@@ -10,6 +10,7 @@ from xlsx_provider.loader import load_worksheet
 from xlsx_provider.commons import (
     check_column_names,
     get_type,
+    prepare_value,
     get_column_names,
     FileFormat,
     DEFAULT_CSV_DELIMITER,
@@ -121,9 +122,8 @@ class FromXLSXOperator(BaseOperator):
 
     def get_value_and_type(self, cel, name, datatypes):
         value = cel.value
-        if isinstance(value, str):
-            value = value.strip()
         if value is not None:
+            value = prepare_value(name, value)
             type_ = get_type(name, value)
             if datatypes[name] is None:
                 datatypes[name] = type_

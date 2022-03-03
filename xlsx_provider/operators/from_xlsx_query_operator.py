@@ -10,6 +10,7 @@ from xlsx_provider.commons import (
     col_number_to_name,
     get_column_names,
     get_type,
+    prepare_value,
     quoted,
     FileFormat,
     INDEX_COLUMN_NAME,
@@ -190,6 +191,7 @@ class Result(object):
             value = row[i]
             if isinstance(value, str):
                 value = value.strip()
+            value = prepare_value(name, value)
             self.columns[name].append(value)
             if self.datatypes[name] is None and value is not None:
                 self.datatypes[name] = get_type(name, value)

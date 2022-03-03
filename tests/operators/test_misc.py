@@ -3,7 +3,15 @@
 from unittest import TestCase, main
 from datetime import datetime
 from xlsx_provider import get_provider_info
-from xlsx_provider.commons import check_column_names, get_type, rmdiacritics
+from xlsx_provider.commons import (
+    check_column_names,
+    get_type,
+    rmdiacritics,
+    TYPE_INT,
+    TYPE_DATETIME,
+    TYPE_DOUBLE,
+    TYPE_STRING,
+)
 
 
 def expect_exception(exception):
@@ -35,11 +43,11 @@ class TestMisc(TestCase):
         self.assertEqual(rmdiacritics('ü'), 'u')
 
     def test_get_type(self):
-        self.assertEqual(get_type('t1', 1), 'int64')
-        self.assertEqual(get_type('t2', 1.0), 'double')
-        self.assertEqual(get_type('t3', datetime.now()), 'datetime64[ns]')
-        self.assertEqual(get_type('t4', 'ciao'), 'str')
-        self.assertEqual(get_type('t5', 'ciao'), 'str')
+        self.assertEqual(get_type('t1', 1), TYPE_INT)
+        self.assertEqual(get_type('t2', 1.0), TYPE_DOUBLE)
+        self.assertEqual(get_type('t3', datetime.now()), TYPE_DATETIME)
+        self.assertEqual(get_type('t4', 'ciao'), TYPE_STRING)
+        self.assertEqual(get_type('t5', 'ciao'), TYPE_STRING)
 
     @expect_exception(Exception)
     def test_get_type_exception(self):

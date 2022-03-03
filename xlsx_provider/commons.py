@@ -14,6 +14,7 @@ __all__ = [
     'check_column_names',
     'get_column_names',
     'get_type',
+    'prepare_value',
     'clean_key',
     'col_number_to_name',
     'copy_cells',
@@ -125,6 +126,20 @@ def get_type(name, value):
         return TYPE_STRING
     else:
         raise Exception('unsupported data type {} {}'.format(name, type(value)))
+
+
+def prepare_value(name, value):
+    "Try cast string to int and float"
+    if isinstance(value, str):
+        value = value.strip()
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                pass
+    return value
 
 
 def get_column_names(sheet, skip_rows=0):
