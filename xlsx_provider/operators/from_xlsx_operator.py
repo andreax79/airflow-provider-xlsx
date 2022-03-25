@@ -22,6 +22,7 @@ from xlsx_provider.commons import (
     TYPE_NULLABLE_INT,
     TYPE_DOUBLE,
     TYPE_DATETIME,
+    NUMERIC_TYPES,
     HEADER_UPPER,
     HEADER_LOWER,
     XLSX_EPOC,
@@ -137,6 +138,9 @@ class FromXLSXOperator(BaseOperator):
                 and type_ == TYPE_DOUBLE
             ):
                 datatypes[name] = type_
+            # If the column is numeric, replace empty strings with None
+            if value == '' and datatypes[name] in NUMERIC_TYPES:
+                value = None
         if datatypes[name] == TYPE_DATETIME:
             if not value:
                 value = None
@@ -311,6 +315,6 @@ if __name__ == "__main__":
         csv_delimiter=args.csv_delimiter,
         csv_header=args.csv_header,
         float_format=args.float_format,
-        nullable_int=args.nullable_int
+        nullable_int=args.nullable_int,
     )
     so.execute({})

@@ -36,6 +36,7 @@ __all__ = [
     'TYPE_NULLABLE_INT',
     'TYPE_DATETIME',
     'TYPE_STRING',
+    'NUMERIC_TYPES',
     'XLS_EPOC',
     'XLSX_EPOC',
     'VERSION',
@@ -71,6 +72,8 @@ TYPE_NULLABLE_INT = 'Int64'
 TYPE_DATETIME = 'datetime64[ns]'
 #: String data type
 TYPE_STRING = 'str'
+#: Numeric data type
+NUMERIC_TYPES = (TYPE_INT, TYPE_NULLABLE_INT, TYPE_DOUBLE)
 
 VERSION_FILE = os.path.join(os.path.dirname(__file__), "VERSION")
 with open(VERSION_FILE) as f:
